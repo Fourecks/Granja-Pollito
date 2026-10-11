@@ -25,6 +25,11 @@ export const taskCopy: Record<TaskId, { title: string; place: string; actor: str
   'collect-milk': { title: 'Recoger leche', place: 'Establo', actor: 'Margarita', quantity: 2 },
 };
 
+const helperNames: Record<string, string> = {
+  pio: 'Pío', lola: 'Lola', margarita: 'Margarita', canela: 'Canela', nube: 'Nube',
+  miel: 'Miel', copito: 'Copito', sol: 'Sol', pipa: 'Pipa',
+};
+
 export function runOfflineProgress(state: FarmState, now = Date.now()): { state: FarmState; report: OfflineReport } {
   const elapsedMs = Math.max(0, now - state.lastSeen);
   const cycles = Math.min(8, Math.floor(elapsedMs / (60 * 60 * 1000)));
@@ -34,7 +39,8 @@ export function runOfflineProgress(state: FarmState, now = Date.now()): { state:
   if (cycles > 0 && enabled.length) {
     for (const task of enabled) {
       const copy = taskCopy[task.id];
-      lines.push(`${copy.actor} ${copy.title.toLowerCase()}.`);
+      const actor = helperNames[task.assignedTo ?? ''] ?? copy.actor;
+      lines.push(`${actor} ${copy.title.toLowerCase()}.`);
       task.status = 'done'; task.lastRunAt = now;
       if (task.id === 'water-crops') next.cropsWatered = true;
       if (task.id === 'collect-eggs') next.eggs += cycles * (taskCopy[task.id].quantity ?? 0);

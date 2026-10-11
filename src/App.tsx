@@ -39,7 +39,8 @@ export default function App() {
   const runTask = useCallback((id: TaskId) => {
     if (workingId || state.tasks[id].status === 'done') return;
     setWorkingId(id);
-    setNotice(`${state.tasks[id].assignedTo ? taskCopy[id].actor : 'La Jefa'} va en camino…`);
+    const helper = characters.find(character => character.id === state.tasks[id].assignedTo)?.name;
+    setNotice(`${helper ?? 'La Jefa'} va en camino…`);
     window.setTimeout(() => {
       setState(current => ({ ...performTask(current, id), lastSeen: Date.now() }));
       setWorkingId(null);
@@ -63,7 +64,7 @@ export default function App() {
     </header>
     <section className="farm-wrap" aria-label="Granja Pollito interactiva">
       <div className="sky-haze haze-one"/><div className="sky-haze haze-two"/>
-      <Scene selected={selected} onSelect={choose} characters={characters} workingCharacter={workingCharacter} onZoom={zoomBy}/>
+      <Scene selected={selected} onSelect={choose} characters={characters} workingCharacter={workingCharacter} workingTask={workingId} onZoom={zoomBy}/>
       <div className="map-hint"><span className="mouse-icon">⌖</span> Arrastra para explorar <span className="hint-separator">·</span> rueda para acercar</div>
       <div className="zoom-controls"><button onClick={() => zoomBy(-100)} aria-label="Acercar"><Plus size={17}/></button><button onClick={() => zoomBy(100)} aria-label="Alejar"><Minus size={17}/></button></div>
       <div className="farm-weather"><span>☀️</span> <div><strong>Un día tranquilo</strong><small>Los pollitos andan de buen humor</small></div></div>
@@ -95,5 +96,5 @@ export default function App() {
 
 function TaskRow({ id, state, onRun, onAssign, disabled }: { id: TaskId; state: FarmState; onRun: (id: TaskId) => void; onAssign: (id: TaskId, value: string) => void; disabled: boolean }) {
   const task = state.tasks[id]; const data = taskCopy[id]; const done = task.status === 'done';
-  return <div className={`task-row ${done ? 'task-done' : ''}`}><div className="task-row-copy"><span className="task-check">{done ? '✓' : '·'}</span><div><strong>{data.title}</strong><small>{data.place}{done ? ' · Hecho' : ''}</small></div></div><div className="task-row-actions"><select aria-label={`Encargado: ${data.title}`} value={task.assignedTo ?? ''} onChange={e => onAssign(id, e.target.value)}><option value="">Nadie</option><option value="pio">Pío</option><option value="lola">Lola</option><option value="margarita">Margarita</option></select><button className="task-action" disabled={done || disabled} onClick={() => onRun(id)}>{done ? 'Listo' : task.assignedTo ? 'Enviar' : 'Hacer'}</button></div></div>;
+  return <div className={`task-row ${done ? 'task-done' : ''}`}><div className="task-row-copy"><span className="task-check">{done ? '✓' : '·'}</span><div><strong>{data.title}</strong><small>{data.place}{done ? ' · Hecho' : ''}</small></div></div><div className="task-row-actions"><select aria-label={`Encargado: ${data.title}`} value={task.assignedTo ?? ''} onChange={e => onAssign(id, e.target.value)}><option value="">Nadie</option>{characters.map(character => <option key={character.id} value={character.id}>{character.name}</option>)}</select><button className="task-action" disabled={done || disabled} onClick={() => onRun(id)}>{done ? 'Listo' : task.assignedTo ? 'Enviar' : 'Hacer'}</button></div></div>;
 }
