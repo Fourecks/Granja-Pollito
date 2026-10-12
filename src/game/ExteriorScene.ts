@@ -9,7 +9,7 @@ import { CELEBRATION_MODE, celebrationMessages, celebrationHumans, celebrationEn
 import { entityCollision, EntitySystem } from './entities';
 import type { FarmRuntime } from './types';
 export class ExteriorScene extends WorldScene {
- private celebration?:CelebrationEvent; private water!:Phaser.GameObjects.Graphics; private crops!:Phaser.GameObjects.Graphics; private lastDiagnostic=0; private lastFrame=-1; private entering=false; private cropPlants:Array<{sprite:Phaser.GameObjects.Image;row:number;variation:number}>=[];
+ private celebration?:CelebrationEvent; private water!:Phaser.GameObjects.Graphics; private crops!:Phaser.GameObjects.Graphics; private lastDiagnostic=0; private lastFrame=-1; private lastGrowth=-1; private entering=false; private cropPlants:Array<{sprite:Phaser.GameObjects.Image;row:number;variation:number}>=[];
  constructor(runtime:FarmRuntime){super('Exterior',runtime);}
  preload(){loadExteriorAssets(this);this.load.on('loaderror',(file:Phaser.Loader.File)=>console.error(`No se pudo cargar ${file.key}`));}
  create(){
@@ -82,7 +82,8 @@ export class ExteriorScene extends WorldScene {
   if(import.meta.env.DEV&&time-this.lastDiagnostic>500){this.lastDiagnostic=time;this.game.canvas.dataset.stage=this.celebration?.stage??'disabled';this.game.canvas.dataset.world=JSON.stringify({phase:this.celebration?.phase??'disabled',particles:this.celebration?.particles??0,fps:Math.round(this.game.loop.actualFps),actors:this.actors.map(a=>({id:a.id,x:Math.round(a.x),y:Math.round(a.y),state:a.state,route:a.route.length,target:a.eventTarget}))});}
   const state=this.runtime.props.current.state,elapsed=state.tasks['water-crops'].lastRunAt?Date.now()-state.tasks['water-crops'].lastRunAt!:Infinity;
   const growth=state.cropsWatered?Math.min(3,1+Math.floor(elapsed/1200000)):0;
-  for(const plant of this.cropPlants)plant.sprite.setFrame(plant.row*4+(plant.variation===3?growth:plant.variation===2?2:3));
+  if(growth!==this.lastGrowth){this.lastGrowth=growth;for(const plant of this.cropPlants)plant.sprite.setFrame(plant.row*4+(plant.variation===3?growth:plant.variation===2?2:3));}
+  if(!this.scene.isVisible())return; // Keep jobs/events running; skip off-screen water drawing.
   const frame=Math.floor(time/170)%8;if(frame===this.lastFrame||!this.water)return;this.lastFrame=frame;this.water.clear();this.crops.clear();
   // Eight discrete pixel ripple frames, clipped to authored water polygons. No CSS effects.
   for(let i=0;i<145;i++){const x=1180+(i*53)%490,y=225+(i*97)%500;if(!waterZones.some(poly=>inside([x,y],poly))||inside([x,y],bridge))continue;

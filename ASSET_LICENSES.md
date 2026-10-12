@@ -27,7 +27,7 @@ Los sprites de gallinas adultas y el tileset anterior de cultivos se sustituyero
 
 - `exterior-hd.webp`: refinamiento de nitidez del mismo mapa, conservando composición, sin nuevos NPC ni decoración horneada; fuente 1672 × 941, conversión WebP sin pérdida.
 - `dogs.webp`: atlas 4 × 2 transparente de Chihuahua café con mancha en un ojo y Maltés blanca, reposo, dos pasos y sentado.
-- `celebration-props.webp`: atlas 4 × 2 de objetos separados: letrero, mesa/pastel, fondo para fotos, flores, globos, farol, caja LDC y regalos. Se recortan como sprites independientes.
+- `celebration-props.webp` (retirado; sustituido por plaza-celebration-v2): atlas 4 × 2 de objetos separados: letrero, mesa/pastel, fondo para fotos, flores, globos, farol, caja LDC y regalos. Se recortan como sprites independientes.
 
 Los tres atlases anteriores de habitantes, vacas y cultivos también se convirtieron a WebP **sin pérdida**, preservando píxeles y transparencia. Las fuentes PNG generadas permanecen fuera del repositorio. Los banderines, cascos/accesorios de invitados, lanzador, partículas, texto luminoso y audio sintetizado se construyen mediante código original del proyecto. No se utilizan GIF, vídeos ni imágenes estáticas de fuegos artificiales.
 

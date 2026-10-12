@@ -95,3 +95,9 @@ Assets originales creados con imagegen integrado:
 Los recortes del atlas están en `src/game/assets.ts`; cada objeto tiene profundidad por su pie.
 La secuencia y los efectos de fuegos artificiales se conservan. Solo se asignan puestos de reunión
 específicos a los humanos para mantenerlos juntos. No se alteran tareas, interiores, datos ni mapa base.
+
+### Música ambiental opcional
+Coloca únicamente tu archivo autorizado en `public/assets/audio/granja-theme.mp3` y despliega.
+El botón discreto de la barra superior activa/pausa el loop al 22 %; el navegador recibe el inicio
+como interacción del usuario. La canción mantiene su posición al entrar/salir de edificios.
+No se incluye la canción de Stardew Valley ni se solicita audio al cargar la página.

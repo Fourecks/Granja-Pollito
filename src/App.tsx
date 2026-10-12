@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { ArrowUpRight, ClipboardList, Egg, House, Info, Leaf, Milk, Minus, Plus, Sparkles, X } from 'lucide-react';
+import BackgroundMusic from './BackgroundMusic';
 const Scene = lazy(() => import('./Scene'));
 import { CELEBRATION_MODE, celebrationMessages, celebrationEntities } from './data/celebration';
 import { workers, taskRoutes } from './data/routes';
@@ -74,7 +75,7 @@ export default function App() {
   return <main className="app-shell">
     <header className="topbar">
       <div className="brand"><div className="brand-mark">🐥</div><div><strong>Granja Pollito</strong><span>Un día bonito en el campo</span></div></div>
-      <div className="topbar-right"><span className="owner-chip"><span className="online-dot"/> La Jefa está en casa</span><button className="icon-button" title="Acerca de la granja" onClick={() => setSelected('sign')}><Info size={18}/></button></div>
+      <div className="topbar-right"><BackgroundMusic/><span className="owner-chip"><span className="online-dot"/> La Jefa está en casa</span><button className="icon-button" title="Acerca de la granja" onClick={() => setSelected('sign')}><Info size={18}/></button></div>
     </header>
     <section className="farm-wrap" aria-label="Granja Pollito interactiva">
 
