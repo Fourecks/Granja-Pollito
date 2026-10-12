@@ -3,7 +3,7 @@ import { MAP, mainland, islands, rawWater, cliffFaces, roads, bridges, ramps, ty
 import { zones } from './zones';
 import type { Polygon } from '../navigation';
 const W=MAP.width/MAP.pixel,H=MAP.height/MAP.pixel;
-export interface WorldMasks { land:Uint8ClampedArray; water:Uint8ClampedArray; surfaces:Uint8ClampedArray; cliffs:Uint8ClampedArray }
+export interface WorldMasks { land:Uint8ClampedArray; water:Uint8ClampedArray; surfaces:Uint8ClampedArray; paths:Uint8ClampedArray; cliffs:Uint8ClampedArray }
 function canvas(w:number,h:number){const c=document.createElement('canvas');c.width=w;c.height=h;return c;}
 function fill(ctx:CanvasRenderingContext2D,shape:Polygon,color:string){ctx.fillStyle=color;ctx.beginPath();shape.forEach(([x,y],i)=>i?ctx.lineTo(x/MAP.pixel,y/MAP.pixel):ctx.moveTo(x/MAP.pixel,y/MAP.pixel));ctx.closePath();ctx.fill();}
 function mask(draw:(ctx:CanvasRenderingContext2D)=>void){const c=canvas(W,H),ctx=c.getContext('2d',{willReadFrequently:true})!;draw(ctx);return ctx.getImageData(0,0,W,H).data;}
@@ -12,16 +12,18 @@ export function createMasks():WorldMasks {
  const water=mask(ctx=>{for(const w of rawWater)fill(ctx,w,'#ffffff');ctx.globalCompositeOperation='destination-out';for(const i of islands)fill(ctx,i.shape,'#ffffff');});
  const cliffs=mask(ctx=>{for(const c of cliffFaces)fill(ctx,c,'#ffffff');ctx.globalCompositeOperation='destination-out';for(const r of ramps)fill(ctx,r.shape,'#ffffff');});
  // Binary stamps prevent antialiased material IDs from turning parcel edges blue.
- const surfaces=new Uint8ClampedArray(W*H*4),stampCanvas=canvas(W,H),stampContext=stampCanvas.getContext('2d',{willReadFrequently:true})!;
- const stamp=(id:number,draw:(ctx:CanvasRenderingContext2D)=>void)=>{
+ const surfaces=new Uint8ClampedArray(W*H*4),paths=new Uint8ClampedArray(W*H*4),stampCanvas=canvas(W,H),stampContext=stampCanvas.getContext('2d',{willReadFrequently:true})!;
+ const stamp=(id:number,draw:(ctx:CanvasRenderingContext2D)=>void,target=surfaces)=>{
   stampContext.clearRect(0,0,W,H);draw(stampContext);const pixels=stampContext.getImageData(0,0,W,H).data;
-  for(let i=0;i<pixels.length;i+=4)if(pixels[i+3]>127){surfaces[i]=id;surfaces[i+3]=255;}
+  for(let i=0;i<pixels.length;i+=4)if(pixels[i+3]>127){target[i]=id;target[i+3]=255;}
  };
  stamp(6,ctx=>{ctx.strokeStyle='#fff';ctx.lineWidth=28;ctx.lineJoin='round';ctx.beginPath();mainland.slice(2).forEach(([x,y],i)=>i?ctx.lineTo(x/2,y/2-5):ctx.moveTo(x/2,y/2-5));ctx.stroke();fill(ctx,islands.find(i=>i.id==='south-beach')!.shape,'#fff');});
  for(const z of zones){const id={grass:9,earth:2,mud:3,soil:4,stone:5,sand:6}[z.surface];stamp(z.id==='pandaSanctuary'?10:z.id==='northForest'||z.id==='woodland'?11:id,ctx=>fill(ctx,z.shape,'#fff'));}
- for(const r of roads)stamp(1,ctx=>{ctx.strokeStyle='#fff';ctx.lineWidth=r.width/2;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();r.line.forEach(([x,y],i)=>i?ctx.lineTo(x/2,y/2):ctx.moveTo(x/2,y/2));ctx.stroke();});
+ for(const r of roads)stamp(1,ctx=>{for(const shape of r.surface)fill(ctx,shape,'#fff');},paths);
+ // Paths end at the plaza's paving rather than painting over its centre.
+ for(let i=0;i<paths.length;i+=4)if(surfaces[i]===5)paths[i+3]=0;
  stamp(5,ctx=>fill(ctx,zones.find(z=>z.id==='centralPlaza')!.shape,'#fff'));
- return {land,water,cliffs,surfaces};
+ return {land,water,cliffs,surfaces,paths};
 }
 const hash=(x:number,y:number,seed=0)=>{let n=Math.imul(x+seed*109,374761393)^Math.imul(y,668265263);n=Math.imul(n^(n>>>13),1274126177);return (n^(n>>>16))>>>0;};
 function patchNoise(x:number,y:number){
@@ -47,17 +49,17 @@ function rgba(data:Uint8ClampedArray,i:number,c:number[],alpha=255){data[i]=c[0]
 export class TerrainLayers {
  readonly masks=createMasks(); readonly objects:Phaser.GameObjects.Image[]=[];
  constructor(private scene:Phaser.Scene){
-  this.chunks('water',-30);this.chunks('terrain',-20);this.chunks('surfaces',-18);this.chunks('topography',-16);
+  this.chunks('water',-30);this.chunks('terrain',-20);this.chunks('surfaces',-18);this.chunks('paths',-17);this.chunks('topography',-16);
   for(const crossing of [...bridges,...ramps])this.crossing(crossing);
  }
- private chunks(layer:'water'|'terrain'|'surfaces'|'topography',depth:number){
-  const {land,water,surfaces,cliffs}=this.masks,n=MAP.chunk/MAP.pixel;
+ private chunks(layer:'water'|'terrain'|'surfaces'|'paths'|'topography',depth:number){
+  const {land,water,surfaces,paths,cliffs}=this.masks,n=MAP.chunk/MAP.pixel;
   for(let cy=0;cy<H;cy+=n)for(let cx=0;cx<W;cx+=n){
    const c=canvas(n,n),ctx=c.getContext('2d')!,image=ctx.createImageData(n,n);let filled=false;
    for(let y=0;y<n;y++)for(let x=0;x<n;x++){
     const gx=cx+x,gy=cy+y,i=(gy*W+gx)*4,j=(y*n+x)*4;if(gx>=W||gy>=H)continue;
-    const isWater=water[i+3]>127,isLand=land[i+3]>127&&!isWater,id=surfaces[i];
-    if(layer==='water'?!isWater:layer==='terrain'?!isLand:layer==='surfaces'?!isLand||!id:cliffs[i+3]<128)continue;
+    const isWater=water[i+3]>127,isLand=land[i+3]>127&&!isWater,id=layer==='paths'?paths[i]:surfaces[i];
+    if(layer==='water'?!isWater:layer==='terrain'?!isLand:layer==='surfaces'?!isLand||!id:layer==='paths'?!isLand||paths[i+3]<128:cliffs[i+3]<128)continue;
     filled=true;const h=hash(gx,gy),patch=patchNoise(gx,gy);
     const material=layer==='water'?8:layer==='topography'?7:layer==='terrain'?0:id;
     const colors=palette[material],blend=patch*(colors.length-1),low=Math.floor(blend),mix=blend-low;
@@ -77,7 +79,7 @@ export class TerrainLayers {
     }
     // Shallow shoreline color and broken foam remain on the actual water layer.
     if(material===8){let shore=false;for(const offset of [-W*3,W*3,-3,3]){const v=i+offset*4;if(v>=0&&v<water.length&&water[v+3]<128)shore=true;}if(shore)color=h%5===0?[179,224,210]:[58,159,173];else if((gx+gy*2)%41===0&&h%4===0)color=[34,149,178];}
-    if(material===1||material===2){const edge=surfaces[i-4]!==id||surfaces[i+4]!==id||surfaces[i-W*4]!==id||surfaces[i+W*4]!==id;if(edge)color=color.map(v=>v-14);if(h%97===0)color=[166,135,84];}
+    if(material===1||material===2){const surface=layer==='paths'?paths:surfaces;const edge=surface[i-4]!==id||surface[i+4]!==id||surface[i-W*4]!==id||surface[i+W*4]!==id;if(edge)color=color.map(v=>v-14);if(h%97===0)color=[166,135,84];}
     rgba(image.data,j,color);
    }
    if(!filled)continue;ctx.putImageData(image,0,0);const key=`phase1-${layer}-${cx}-${cy}`;

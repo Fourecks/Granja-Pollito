@@ -10,7 +10,7 @@ El exterior anterior (`ExteriorScene`, `data/world.ts`) dibujaba `exterior-hd.we
 
 - Tamaño: **3072 × 2048 unidades**; resolución artística 2 unidades por píxel (1536 × 1024 píxeles de trabajo).
 - Chunks: 256 × 256 unidades, con texturas raster de 128 × 128 píxeles y filtro nearest. No hay una imagen completa del escenario en el renderizador.
-- Capas independientes: terreno base; superficies de parcelas/caminos/plaza; topografía; agua; ondas; cascadas; puentes/rampas; entidades existentes.
+- Capas independientes: terreno base; superficies de parcelas/plaza; caminos; topografía; agua; ondas; cascadas; puentes/rampas; entidades existentes.
 - Raster determinista: variación orgánica de césped, tonos de tierra/barro, surcos de suelo preparado, adoquines, bloques de roca, playas y márgenes de agua. No hay SVG, CSS ni emojis dentro del mundo.
 - Solamente tres trabajadores existentes siguen visibles para mantener tareas y validar escala/rutas. No se crean animales, edificios, vegetación final, cercas ni decoración. Se conservan sus definiciones y assets para las siguientes fases.
 - El antiguo renderizador queda en `LegacyExteriorScene.ts` y `legacyWorld.ts` como referencia de migración, sin importarse ni cargarse en el exterior actual. No es una segunda aplicación ni un modo de producción.
@@ -43,3 +43,25 @@ La cámara conserva drag, inercia, rueda, controles de zoom y pinch de dos dedos
 Comandos de entrega: `npm test`, `npm run typecheck`, `npm run build`, `git diff --check`. La revisión de navegador comprueba animación, tareas, persistencia local, drag, zoom, resize y tamaños móvil/escritorio. Las pruebas táctiles sintéticas no equivalen a una prueba en un teléfono físico. No se modifica el servicio de Render, repositorio ni esquema Supabase.
 
 **La fase 2 no se inicia.** La siguiente revisión debe decidir distribución y escala antes de construir edificios, árboles, animales o decoración.
+
+## Pase de pulido geométrico
+
+Se mantiene el tamaño mundial, la escala humana, el renderer por chunks, la cámara y A*. El cambio se limita a la geometría existente: curvas más suaves en costa/lago/caminos, anchura ligeramente variable de senderos, paredes naturales que disminuyen su altura en extremos libres, desembocaduras/pozas sin cortes planos y márgenes de cascadas acordes con su corriente.
+
+Los tableros de puentes siguen rectos. Sus senderos de llegada y salida se unen a los puntos reales de cruce; las escaleras del gallinero, la casa y el acceso norte tienen conexiones de camino. Los puentes de patos, isla del lago y playa aterrizan en sus orillas, en vez de terminar en agua libre. Los caminos rodean el suelo agrícola y utilizan un acceso corto por su borde.
+
+Las parcelas de establos, patios de caballos/cerdos, gallinero, cultivos e invernadero ahora tienen contornos rectangulares redondeados, conservando sus cajas de dimensiones. La casa y la conejera recuperan un poco de superficie respecto al plano maestro. Dimensiones de autor (multiplicar por dos para unidades mundiales):
+
+| Parcela | Ancho × alto | Centro |
+| --- | --- | --- |
+| Establo mixto | 248 × 134 | 608, 309 |
+| Vacas | 248 × 116 | 987, 325 |
+| Gallinero | 192 × 98 | 371, 431 |
+| Cultivos | 212 × 116 | 1090, 476 |
+| Invernadero | 124 × 106 | 1323, 462 |
+| Casa | ≈228 × 134 | 875, 609 |
+| Conejera | ≈140 × 92 | 1400, 675 |
+
+**Independencia de capas:** terreno, parcelas/plaza, caminos, agua y acantilados generan máscaras y chunks propios. Puentes y escaleras tienen texturas/objetos independientes. Ondas y cascadas conservan su animación separada. Colisiones y navegación son polígonos/datos lógicos independientes de las texturas. No existe una imagen de fondo en el exterior activo. Los caminos se separaron del batch de parcelas usando el mismo mecanismo de chunks, sin introducir otro renderer.
+
+Las pruebas ahora validan todos los segmentos de los caminos dibujados y la conexión de su grafo con Plaza Central. No basta que A* encuentre un desvío por césped. Verifican también que cada puente terrestre tiene ambos extremos secos y un cruce real de agua entre ellos. Se conservan las pruebas de tareas, agua, obstáculos, interiores, progreso offline, partículas y cámara. No se añade vegetación, edificios, animales ni decoración.

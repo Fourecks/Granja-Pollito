@@ -1,7 +1,7 @@
-import { oval, point, polygon } from './mapConfig';
+import { parcel, oval, point, polygon } from './mapConfig';
 import type { Point, Polygon } from '../navigation';
 export interface Zone { id:string; center:Point; approach:Point; shape:Polygon; surface:'grass'|'earth'|'mud'|'soil'|'stone'|'sand'; elevation:number; legacyObject?:string }
-const zone=(id:string,x:number,y:number,rx:number,ry:number,surface:Zone['surface']='grass',legacyObject?:string,elevation=0):Zone=>({id,center:point(x,y),approach:point(x,y+ry*.65),shape:oval(x,y,rx,ry,x),surface,elevation,legacyObject});
+const zone=(id:string,x:number,y:number,rx:number,ry:number,surface:Zone['surface']='grass',legacyObject?:string,elevation=0):Zone=>({id,center:point(x,y),approach:point(x,y+ry*.65),shape:['mixedBarnArea','horsePaddock','pigPaddock','cowArea','chickenArea','cropsArea','greenhouseArea'].includes(id)?parcel(x,y,rx,ry):oval(x,y,rx,ry,x),surface,elevation,legacyObject});
 export const zones:Zone[] = [
  zone('pandaSanctuary',250,200,116,67,'grass',undefined,1),
  zone('northForest',777,75,126,65,'grass',undefined,2),
@@ -13,9 +13,9 @@ export const zones:Zone[] = [
  zone('centralPlaza',713,486,87,60,'stone','sign'),
  zone('cropsArea',1090,476,106,58,'soil','garden'),
  zone('greenhouseArea',1323,462,62,53,'earth','shed'),
- zone('jefeHouseArea',875,609,101,65,'grass','home',1),
+ zone('jefeHouseArea',875,609,114,67,'grass','home',1),
  zone('sheepGoatArea',1168,637,112,68),
- zone('rabbitArea',1400,675,67,43,'earth'),
+ zone('rabbitArea',1400,675,70,46,'earth'),
  zone('duckArea',140,598,78,43),
  zone('beach',322,884,105,15,'sand'),
  zone('lakeIsland',425,715,67,34),
