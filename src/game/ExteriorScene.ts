@@ -5,7 +5,7 @@ import { CameraControls } from './camera';
 import { createFrames, loadExteriorAssets } from './assets';
 import { NavigationGrid, inside, type Point } from './navigation';
 import { MAP, navigation, cowPen, worldObjects, mapDecorations, waterZones, bridge, type InteriorId } from '../data/world';
-import { CELEBRATION_MODE, celebrationEntities, globalDestinations, gatheringPoints } from '../data/celebration';
+import { CELEBRATION_MODE, celebrationMessages, celebrationHumans, celebrationEntities, globalDestinations, gatheringPoints } from '../data/celebration';
 import { entityCollision, EntitySystem } from './entities';
 import type { FarmRuntime } from './types';
 export class ExteriorScene extends WorldScene {
@@ -36,18 +36,20 @@ export class ExteriorScene extends WorldScene {
  private createCelebration(){
   const entities=new EntitySystem(this,entity=>{const action=entity.interaction;if(action?.kind==='message'){this.runtime.props.current.onSelect(entity.id);}else if(action?.kind==='launcher'){window.dispatchEvent(new Event('farm-surprise-request'));}else this.runtime.props.current.onSelect(entity.id);},()=>this.controls.moved);
   for(const entity of celebrationEntities)entities.add(entity);
-  for(const message of celebrationEntities.filter(e=>e.interaction?.kind==='message'))this.add.text(message.position[0],message.position[1]-48,message.interaction!.text,{fontFamily:'Georgia',fontSize:'10px',fontStyle:'bold',color:'#ffebbb',wordWrap:{width:65},align:'center',resolution:2}).setOrigin(.5).setDepth(message.position[1]+.1);
-  const bunting=this.add.graphics().setDepth(343);bunting.lineStyle(1,0x68492e);bunting.beginPath();
-  for(let i=0;i<=30;i++){const x=658+i*10,y=281+Math.sin(i/30*Math.PI)*19;if(i)bunting.lineTo(x,y);else bunting.moveTo(x,y);if(i%2===0){bunting.fillStyle([0xf4a8b7,0xffd76d,0x99c8e4,0xfff6dc][i/2%4]);bunting.fillTriangle(x,y,x+10,y+2,x+5,y+16);bunting.fillStyle(0xffdf86);bunting.fillRect(x-1,y-2,3,3);}}bunting.strokePath();
-  for(const x of [658,958]){bunting.fillStyle(0x75492c).fillRect(x-2,282,4,60);}
-  const launcher=this.add.container(869,462).setDepth(463),g=this.add.graphics();g.fillStyle(0x614833).fillRect(-10,-7,20,10);for(let i=0;i<3;i++){g.fillStyle([0xf0aaaf,0xffce62,0x79a9c5][i]).fillRect(-7+i*6,-17,4,12);}launcher.add(g);launcher.setSize(32,34).setInteractive({useHandCursor:true}).on('pointerup',()=>{if(!this.controls.moved)window.dispatchEvent(new Event('farm-surprise-request'));});
-  const tooltip=this.add.text(869,435,'🎆 Iniciar sorpresa',{fontSize:'11px',backgroundColor:'#fff5df',color:'#654529',padding:{x:5,y:4},resolution:2}).setOrigin(.5).setDepth(3001).setVisible(false);launcher.on('pointerover',()=>tooltip.setVisible(true));launcher.on('pointerout',()=>tooltip.setVisible(false));
-  for(let i=0;i<12;i++){const home=this.nav.nearest([710+(i%6)*35,435+Math.floor(i/6)*18]);const a=this.actor(`celebration-chick-${i}`,'chick',home,[gatheringPoints[(i+4)%gatheringPoints.length],home],this.nav);a.variant=i%8;a.accessory=this.add.graphics();const g=a.accessory;
-   if(i%8<2){g.fillStyle(i%8?0xfff8df:0xffcb48).fillRect(-6,-20,12,5).fillRect(-4,-24,8,5);g.fillStyle(0xad7e26).fillRect(-7,-19,14,2);}
-   else if(i%8===2){g.lineStyle(1,0xc89778).lineBetween(5,-8,8,-31);g.fillStyle(0xf29dae).fillEllipse(8,-35,10,12);}
-   else if(i%8===3){g.fillStyle(0x876747).fillRect(5,-13,2,12);g.fillStyle(0x8ea3aa).fillRect(2,-15,8,4);}
-   else if(i%8===7){g.fillStyle(0xae733c).fillRect(5,-20,14,12);g.fillStyle(0xffdf85).fillRect(7,-18,10,2).fillRect(8,-14,8,2);}
+  for(const message of celebrationMessages)this.add.text(message.position[0]+message.offset[0],message.position[1]+message.offset[1],message.text,{fontFamily:'Georgia',fontSize:`${message.fontSize}px`,fontStyle:'bold',color:'#51321e',wordWrap:{width:message.width},align:'center',resolution:3}).setOrigin(.5).setDepth(message.position[1]+.1);
+  for(let i=0;i<16;i++){
+   const home=this.nav.nearest(gatheringPoints[(i+4)%gatheringPoints.length]);
+   const a=this.actor(`celebration-chick-${i}`,'chick',home,[gatheringPoints[(i+9)%gatheringPoints.length],home],this.nav);a.variant=i%8;
+   if(i%3===0){a.workerChick=true;a.sprite.setTexture('worker-chicks',0).setDisplaySize(32,32).setOrigin(.5,.94);}
   }
+  for(const a of this.actors.filter(a=>a.kind==='worker')){
+   const point=celebrationHumans[a.id];if(!point)continue;
+   a.home=point;a.patrol=[point];a.route=a.nav.path([a.x,a.y],point);
+   const name={kiara:'Kiara',minnie:'Minnie',pollito:'Pollito'}[a.id]!;
+   const label=this.add.text(a.x,a.y-43,name,{fontFamily:'monospace',fontSize:'9px',color:'#fff5da',stroke:'#513621',strokeThickness:2,resolution:2}).setOrigin(.5).setDepth(3000).setVisible(false);
+   a.sprite.on('pointerover',()=>{label.setPosition(a.x,a.y-43).setVisible(true);});a.sprite.on('pointerout',()=>label.setVisible(false));
+  }
+
  }
  private createCrops(){
   for(let bed=0;bed<2;bed++)for(let row=0;row<3;row++)for(let col=0;col<5;col++){

@@ -76,3 +76,22 @@ El lanzador y el botón «🎆 Iniciar sorpresa» activan `CelebrationEvent`. Lo
 `FireworksSystem` gestiona cohetes, trayectorias, estelas y cinco explosiones mediante partículas con velocidad, gravedad y vida. `ParticleTextSystem` rasteriza las letras en un canvas oculto y obtiene destinos; lo visible son partículas que convergen en «ORGULLOSOS DE TI / POLLITO», titilan y terminan en una explosión con corazones. La cámara se desplaza suavemente y permite arrastre/zoom; la interacción cancela el movimiento cinematográfico. El audio sintetizado es suave y solo se abre tras la activación del usuario.
 
 El presupuesto inicial es 650 partículas para pantallas estrechas y 1600 para escritorio; puede bajar a 420/900 si hay cuadros lentos. Se reserva presupuesto para que las letras no pierdan puntos por las explosiones. Los interiores siguen cargándose bajo demanda. `npm test` añade destinos globales, reunión, activación/desactivación de colisiones y pruebas de física, límite, convergencia y reinicio de partículas. En desarrollo, `data-world`/`data-stage` del canvas permiten comprobar posiciones y rendimiento; no se publican como interfaz de usuario.
+
+### Plaza festiva — decoración v2
+
+La decoración temporal se configura en `src/data/celebration.ts`: objetos independientes,
+textos, tamaños, posiciones, huellas sólidas y puntos de reunión. `CELEBRATION_MODE = false`
+retira adornos, invitados y sus colisiones, además del botón de sorpresa. No modifica el mapa base.
+`celebrationHumans` coloca a Kiara, Pollito (centro) y Minnie junto al arco; las tareas siguen teniendo prioridad.
+Los nombres aparecen al hover y el panel al seleccionar. Los tres carteles se pueden seleccionar para leerlos.
+
+Assets originales creados con imagegen integrado:
+- `public/assets/plaza-celebration-v2.webp`: 16 objetos transparentes: cartel floral, mesa de pastel,
+  arco, maceta, globos, farol, banco de trabajo, regalos, expositor JW.ORG de libros genéricos,
+  cartel espiritual, tela vertical, banco, banderines, borde floral, caja de cohetes y mesa de libros.
+- `public/assets/worker-chicks.webp`: ocho frames completos del pollito con casco y martillo
+  (reposo, dos pasos, tres golpes, sentado y celebración). El martillo y el casco se animan con el cuerpo.
+
+Los recortes del atlas están en `src/game/assets.ts`; cada objeto tiene profundidad por su pie.
+La secuencia y los efectos de fuegos artificiales se conservan. Solo se asignan puestos de reunión
+específicos a los humanos para mantenerlos juntos. No se alteran tareas, interiores, datos ni mapa base.

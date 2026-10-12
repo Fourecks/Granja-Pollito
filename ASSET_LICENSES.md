@@ -30,3 +30,11 @@ Los sprites de gallinas adultas y el tileset anterior de cultivos se sustituyero
 - `celebration-props.webp`: atlas 4 × 2 de objetos separados: letrero, mesa/pastel, fondo para fotos, flores, globos, farol, caja LDC y regalos. Se recortan como sprites independientes.
 
 Los tres atlases anteriores de habitantes, vacas y cultivos también se convirtieron a WebP **sin pérdida**, preservando píxeles y transparencia. Las fuentes PNG generadas permanecen fuera del repositorio. Los banderines, cascos/accesorios de invitados, lanzador, partículas, texto luminoso y audio sintetizado se construyen mediante código original del proyecto. No se utilizan GIF, vídeos ni imágenes estáticas de fuegos artificiales.
+
+## Plaza festiva v2 (octubre 2026)
+
+`plaza-celebration-v2.webp` y `worker-chicks.webp` son imágenes originales creadas con la herramienta
+integrada imagegen para esta corrección, conservando transparencia y convertidas sin pérdida a WebP.
+La referencia visual fue aportada por el usuario. Las publicaciones son libros genéricos, sin portadas copiadas.
+Los mensajes se dibujan como texto de Phaser sobre los objetos físicos y permanecen editables.
+Los prompts de producción y el inventario están en `docs/plaza-assets.md`.

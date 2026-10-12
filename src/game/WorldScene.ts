@@ -7,7 +7,7 @@ import { globalDestinations } from '../data/celebration';
 import type { CameraControls } from './camera';
 export interface Actor {
  id:string; kind:'chick'|'worker'|'cow'|'dog'; row:number; x:number; y:number; home:Point; patrol:Point[]; route:Point[]; step:number;
- sprite:Phaser.GameObjects.Sprite; shadow:Phaser.GameObjects.Ellipse; nav:NavigationGrid; nextPatrol:number; sleeping?:boolean; state:'IDLE'|'WALK'|'WORK'|'OBSERVE'|'CELEBRATE'|'RUN'|'SIT'|'SLEEP'|'FOLLOW'|'DANCE'|'LOOK_UP'; eventTarget?:Point; accessory?:Phaser.GameObjects.Graphics; variant?:number;
+ sprite:Phaser.GameObjects.Sprite; shadow:Phaser.GameObjects.Ellipse; nav:NavigationGrid; nextPatrol:number; sleeping?:boolean; state:'IDLE'|'WALK'|'WORK'|'OBSERVE'|'CELEBRATE'|'RUN'|'SIT'|'SLEEP'|'FOLLOW'|'DANCE'|'LOOK_UP'; eventTarget?:Point; accessory?:Phaser.GameObjects.Graphics; variant?:number; workerChick?:boolean;
 }
 interface Job {task:TaskId;worker:Actor;phase:'walk'|'action';until:number;effect:Phaser.GameObjects.Container|null;}
 export abstract class WorldScene extends Phaser.Scene {
@@ -76,6 +76,8 @@ export abstract class WorldScene extends Phaser.Scene {
     if(time>actor.nextPatrol&&!actor.sleeping&&!actor.eventTarget&&actor.patrol.length){let target=actor.patrol[actor.step++%actor.patrol.length];if(actor.kind==='dog'&&actor.step%3===0){const human=this.actors.filter(a=>a.kind===((actor.step%6===0)?'chick':'worker'))[Math.floor(actor.step/3)%3];if(human){const near:Point=[human.x+(actor.row?-18:18),human.y+(actor.row?18:12)];if(actor.nav.canWalk(...near))target=near;actor.state='FOLLOW';}}else if(actor.kind==='dog')actor.state=actor.step%2?'RUN':'WALK';actor.route=actor.nav.path([actor.x,actor.y],target);if(actor.kind!=='dog')actor.state=actor.step%3?'OBSERVE':'IDLE';actor.nextPatrol=time+4500+(actor.step%4)*1800;}
    }
    if((actor.eventTarget||actor.state==='DANCE')&&!actor.route.length){actor.sprite.y-=actor.kind==='dog'?0:Math.max(0,Math.sin(time/140+actor.row))*3;actor.sprite.setFrame(actor.kind==='dog'?actor.row*4+3:actor.kind==='worker'?actor.row*4+3:actor.variant===4?0:3);}
+   // Helmet and hammer belong to the complete character frames, never an overlay.
+   if(actor.workerChick){const frame=actor.route.length?1+Math.floor(time/160)%2:actor.eventTarget?7:actor.step%3===0?3+Math.floor(time/220)%3:actor.step%3===1?6:0;actor.sprite.setFrame(frame);}
    if(actor.kind==='dog'&&actor.accessory){const g=actor.accessory;g.clear();if(actor.state==='SLEEP'){g.lineStyle(1,0xfff4dc,.85);g.beginPath();g.moveTo(7,-29).lineTo(12,-29).lineTo(7,-24).lineTo(12,-24);g.strokePath();}}
    actor.accessory?.setPosition(actor.x,actor.sprite.y).setDepth(actor.y+.2).setVisible(actor.sprite.visible);
    actor.sprite.setVisible(this.cameras.main.worldView.contains(actor.x,actor.y)||!this.scene.isVisible());

@@ -12,7 +12,7 @@ try {
  const {characters}=require(path.join(output,'data/farm.js'));
  const {interiors}=require(path.join(output,'data/interiors.js'));
  const {DEFAULT_STATE,performTask,runOfflineProgress}=require(path.join(output,'domain.js'));
- const {celebrationEntities,globalDestinations,gatheringPoints}=require(path.join(output,'data/celebration.js'));
+ const {celebrationEntities,celebrationHumans,globalDestinations,gatheringPoints}=require(path.join(output,'data/celebration.js'));
  const eventNavigation={...navigation,obstacles:[...navigation.obstacles,...celebrationEntities.filter(e=>e.collision).map(e=>e.collision.map(([x,y])=>[x+e.position[0],y+e.position[1]]))]};
  const nav=new NavigationGrid(eventNavigation,4),chicks=new NavigationGrid({...navigation,walkable:[coopPen]},2),cows=new NavigationGrid({...navigation,walkable:[cowPen]},7);
  let routes=0,samples=0;
@@ -33,7 +33,10 @@ try {
  assert.equal(new NavigationGrid(navigation,4).canWalk(908,360),true);assert.equal(nav.canWalk(908,360),false);
  assert.equal(nav.path([710,390],[1350,650]).length,0);assert.equal(chicks.path([280,350],[1285,298]).length,0);assert.equal(cows.path([1285,298],[280,350]).length,0);
  for(const p of [[1350,650],[1620,370],[1270,660]]){assert.equal(nav.canWalk(...p),false);assert.equal(chicks.canWalk(...p),false);assert.equal(cows.canWalk(...p),false);}
- for(const destination of globalDestinations)for(const worker of workers)checkRoute(nav,worker.home,destination,'global:'+worker.id);
+ for(const e of celebrationEntities.filter(e=>e.collision))assert.equal(nav.canWalk(...e.position),false,'Objeto sólido: '+e.id);
+ for(const [id,p] of Object.entries(celebrationHumans)){checkRoute(nav,workers.find(w=>w.id===id).home,p,'human:'+id);for(const [task,route] of Object.entries(taskRoutes)){checkRoute(nav,p,route.point,'plaza-task:'+id+':'+task);checkRoute(nav,route.point,p,'plaza-return:'+id+':'+task);}}
+ for(const destination of globalDestinations)for(const worker of workers)checkRoute(nav,worker.home,destination,'global:'+worker.id+':'+destination);
+ assert.deepEqual(gatheringPoints.filter(p=>!nav.canWalk(...p)),[],'Puntos bloqueados');
  for(const p of gatheringPoints){assert.ok(nav.canWalk(...p),'Reunión bloqueada: '+p);checkRoute(nav,[718,439],p,'reunión');}
  const bridgeBlocked=new NavigationGrid({...navigation,obstacles:[...navigation.obstacles,rectangle(1460,480,12,12)]},2);assert.equal(bridgeBlocked.canWalk(1466,486),false);
  const state=structuredClone(DEFAULT_STATE),now=Date.now();state.lastSeen=now-24*3600000;state.tasks['collect-milk'].assignedTo='vera';state.tasks['collect-eggs'].assignedTo='alma';
