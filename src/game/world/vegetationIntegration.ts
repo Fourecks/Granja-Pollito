@@ -10,8 +10,10 @@ export function blendVegetationBases(scene:Phaser.Scene,ctx:CanvasRenderingConte
   x=Math.round(x);y=Math.round(y);if(x<2||y<2||x>=width-2||y>=MAP.height/2-2)return false;
   const i=(y*width+x)*4;return masks.paths[i+3]===0&&masks.cliffs[i+3]===0&&(wet?masks.water[i+3]>0||masks.land[i+3]>127:masks.water[i+3]===0&&masks.land[i+3]>127&&[0,9,10,11].includes(masks.surfaces[i]));
  };
- const baseKind=(p:Plant)=>p.name.includes('BUSH')?'bush':p.name.startsWith('FLOWERS')?'flower':p.name.includes('REEDS')||p.name==='CATTAILS'?'wet':p.name.includes('ROCK')?'rock':p.name.includes('BAMBOO')?'bamboo':p.name.includes('TREE')||p.name.includes('LOG')||p.name.startsWith('PINE')?'tree':null;
+ const baseKind=(p:Plant)=>p.name.includes('BUSH')?'bush':p.name.startsWith('FLOWERS')?'flower':p.name.includes('REEDS')||p.name==='CATTAILS'?'wet':p.name.includes('ROCK')?'rock':p.name.includes('BAMBOO')?'bamboo':p.name==='BRANCHES'||p.name.includes('TREE')||p.name.includes('LOG')||p.name.startsWith('PINE')?'tree':null;
  for(const p of plan.plants){const kind=baseKind(p);if(!kind)continue;
+  // Subtle, broken contact shadows only on valid terrain, baked with tiny base detail.
+  if(kind!=='flower'&&valid(p.x/2,p.y/2,kind==='wet')){ctx.save();ctx.fillStyle='#334929';ctx.globalAlpha=.13;const span=Math.min(14,p.width*.14);for(let dx=-Math.floor(span);dx<=span;dx+=2)if(valid(p.x/2+dx,p.y/2,false))ctx.fillRect(Math.round(p.x/2+dx),Math.round(p.y/2),2,1);ctx.restore();}
   const count=kind==='flower'?3:kind==='bamboo'?7:4+Math.floor(random()*4);
   for(let i=0;i<count;i++){
    // Uneven offsets favour one side, never a ring repeated around every object.

@@ -36,7 +36,6 @@ export class VegetationLayer {
    if(p.sway&&this.windPlants.filter(o=>o.family==='tallGrass'||o.family==='reeds').length<36)this.windPlants.push({sprite,family:p.name.startsWith('REEDS')?'reeds':'tallGrass',variation:this.wind.variation(p.x,p.y),amplitude:.06});
    if(flowerSway)this.windPlants.push({sprite,family:'flowers',variation:this.wind.variation(p.x,p.y),amplitude:.025});
    if(p.name.startsWith('BAMBOO')&&this.windPlants.filter(o=>o.family==='bamboo').length<24)this.windPlants.push({sprite,family:'bamboo',variation:this.wind.variation(p.x,p.y),amplitude:.014});
-   if(p.name.startsWith('TREE_GREEN')&&this.windPlants.filter(o=>o.family==='canopy').length<8)this.windPlants.push({sprite,family:'canopy',variation:this.wind.variation(p.x,p.y),amplitude:.008});
   }
   // Bake small non-blocking detail into transparent 256-world-unit chunks.
   for(let y=0;y<ground.height;y+=128)for(let x=0;x<ground.width;x+=128){
@@ -78,5 +77,5 @@ export class VegetationLayer {
   }
   for(const m of this.fireflies){const visible=this.twilight&&view.contains(m.home.x,m.home.y);m.sprite.setVisible(visible);if(visible)m.sprite.setPosition(m.home.x+Math.sin(time/1700+m.phase)*20,m.home.y-18+Math.cos(time/2100+m.phase)*12).setAlpha(.3+.5*(1+Math.sin(time/650+m.phase))/2).setDepth(m.home.y+25);}
  }
- get diagnostics(){return {plants:this.plan.plants.length,displayPlants:this.visual.plants.length,occupancy:{structural:this.visual.structuralCount,suppressed:this.visual.suppressed,merged:this.visual.merged},solids:this.plan.obstacles.length,sprites:this.tall.length,visible:this.objects.filter(o=>o.visible).length,butterflies:this.butterflies.filter(m=>m.sprite.visible).length,motes:this.motes.filter(m=>m.sprite.active).length,fireflies:this.fireflies.filter(m=>m.sprite.visible).length,sway:this.windPlants.length,microGrass:this.microGrass.diagnostics,biomes:Object.fromEntries(['north','panda','coast','shore','garden','landmark'].map(b=>[b,this.plan.plants.filter(p=>p.biome===b).length]))};}
+ get diagnostics(){return {plants:this.plan.plants.length,displayPlants:this.visual.plants.length,polish:{deadwoodReduced:this.visual.deadwoodReduced,flowersReduced:this.visual.flowersReduced,shoreReduced:this.visual.shoreReduced,treeSilhouettes:this.visual.treeSilhouettes},occupancy:{structural:this.visual.structuralCount,suppressed:this.visual.suppressed,merged:this.visual.merged},solids:this.plan.obstacles.length,sprites:this.tall.length,visible:this.objects.filter(o=>o.visible).length,butterflies:this.butterflies.filter(m=>m.sprite.visible).length,motes:this.motes.filter(m=>m.sprite.active).length,fireflies:this.fireflies.filter(m=>m.sprite.visible).length,sway:this.windPlants.length,microGrass:this.microGrass.diagnostics,biomes:Object.fromEntries(['north','panda','coast','shore','garden','landmark'].map(b=>[b,this.plan.plants.filter(p=>p.biome===b).length]))};}
 }

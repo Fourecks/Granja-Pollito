@@ -1,3 +1,4 @@
+import { polishVegetation } from './vegetationPolish';
 import atlas from '../../../public/assets/vegetation-atlas.json';
 import { footprint, type Plant, type VegetationPlan } from './vegetationPlan';
 export interface OccupiedArea {left:number;right:number;top:number;bottom:number;}
@@ -41,5 +42,6 @@ export function resolveVegetationOccupancy(plan:VegetationPlan){
   if(large){blockers.push(area);occupied.push(area);}
   result.push({...p,drawWidth:width,ground:large?false:p.ground,occupied:large?area:undefined});
  }
- return {plants:result,occupied,suppressed,merged:solids.length-groups.length,structuralCount:occupied.length};
+ const polish=polishVegetation(result);
+ return {...polish,occupied,suppressed,merged:solids.length-groups.length,structuralCount:occupied.length};
 }

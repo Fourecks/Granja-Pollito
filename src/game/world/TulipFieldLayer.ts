@@ -30,8 +30,9 @@ export class TulipFieldLayer {
   const atlas=this.scene.textures.get('tulip-flowers'),source=atlas.getSourceImage() as HTMLImageElement;
   const readable=selectReadableTulips(this.plan.flowers);this.flowerCount=readable.length;
   const byPatch=new Map<string,Tulip[]>();for(const f of readable){const key=`${Math.floor(f.x/96)},${Math.floor(f.y/32)}`,list=byPatch.get(key)??[];list.push(f);byPatch.set(key,list);}
+  const movingIds=new Set([...byPatch].filter(([,f])=>f[0].animated).sort(([a],[b])=>Math.sin(Number(a.split(',')[0])*17+Number(a.split(',')[1])*31)-Math.sin(Number(b.split(',')[0])*17+Number(b.split(',')[1])*31)).slice(0,Math.floor(byPatch.size*.14)).map(([id])=>id));
   for(const [id,flowers] of byPatch){
-   const [px,py]=id.split(',').map(Number),x=px*96,y=py*32,moving=flowers[0].animated;
+   const [px,py]=id.split(',').map(Number),x=px*96,y=py*32,moving=movingIds.has(id);
    const w=88,h=56,padding=20,frames=moving?5:1,c=document.createElement('canvas');c.width=w*frames;c.height=h;const ctx=c.getContext('2d')!;ctx.imageSmoothingEnabled=false;
    const sorted=flowers.slice().sort((a,b)=>a.y-b.y);
    for(let frame=0;frame<frames;frame++){ctx.save();ctx.translate(frame*w,0);
