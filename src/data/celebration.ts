@@ -4,7 +4,7 @@ import type { WorldEntity } from '../game/entities';
 export const CELEBRATION_MODE = true;
 export const celebrationMessages = [
  {id:'celebration-sign',text:'¡La granja\nestá muy\nfeliz por ti!',position:[690,355] as Point,size:[103,84] as Point,frame:0,offset:[0,-35] as Point,fontSize:9,width:68},
- {id:'spiritual-sign',text:'La granja también se alegra\npor tu progreso espiritual ♥',position:[635,404] as Point,size:[104,67] as Point,frame:9,offset:[0,-27] as Point,fontSize:6.5,width:82},
+ {id:'spiritual-sign',text:'La granja también\nse alegra por tu\nprogreso espiritual ♥',position:[635,404] as Point,size:[104,67] as Point,frame:9,offset:[0,-25] as Point,fontSize:6.5,width:82},
  {id:'progress-banner',text:'Sigue\nhaciendo\nprogresos\n\nProv. 24:16',position:[987,374] as Point,size:[48,90] as Point,frame:10,offset:[0,-43] as Point,fontSize:7,width:32},
 ];
 const prop=(id:string,position:Point,frame:number,size:Point,footprint:Point):WorldEntity=>({id,position,sprite:{key:'plaza-props',frame,size,origin:[.5,.96]},collision:rectangle(-footprint[0]/2,-footprint[1]/2,...footprint),depthAnchor:0,interaction:{kind:'detail',text:'Los pollitos prepararon este rincón con flores y mucho cariño.'}});
@@ -21,7 +21,7 @@ export const celebrationEntities:WorldEntity[]=[
  prop('ldc-tools',[913,486],6,[63,48],[44,19]),
  prop('gifts',[948,388],7,[48,44],[28,16]),
  prop('gifts-entry',[728,487],7,[43,39],[26,15]),
- ...([[640,354],[965,344],[978,403],[695,492],[650,425],[948,493]] as Point[]).map((p,i)=>prop(`balloons-${i}`,p,4,[36,60],[12,10])),
+ ...([[640,354],[965,344],[978,403],[695,492],[595,425],[948,493]] as Point[]).map((p,i)=>prop(`balloons-${i}`,p,4,[36,60],[12,10])),
  ...([[675,405],[945,406],[679,512],[1008,473]] as Point[]).map((p,i)=>prop(`celebration-lamp-${i}`,p,5,[26,58],[8,8])),
  ...([[648,377],[736,342],[894,337],[962,363],[653,460],[992,451],[893,500],[748,494],[678,346],[935,351]] as Point[]).map((p,i)=>prop(`flower-pot-${i}`,p,3,[27,30],[14,10])),
  ...([[693,471],[780,492],[851,488],[927,509]] as Point[]).map((p,i)=>prop(`flower-border-${i}`,p,13,[45,19],[35,8])),
