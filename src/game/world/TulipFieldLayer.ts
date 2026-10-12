@@ -1,11 +1,13 @@
 import Phaser from 'phaser';
 import { MAP } from './mapConfig';
 import { WindSystem, type WindVariation } from './wind';
+import { selectReadableTulips } from './tulipDisplay';
 import type { TulipFieldPlan, Tulip } from './tulipFieldPlan';
 interface Patch {image:Phaser.GameObjects.Image;moving:boolean;variation:WindVariation;nextFrame:number;}
 const names=['PINK_TULIP_01','PINK_TULIP_02','PINK_TULIP_03','PINK_TULIP_04','PINK_TULIP_BUD','PINK_TULIP_CLUSTER_SMALL','PINK_TULIP_CLUSTER_MEDIUM','PINK_TULIP_CLUSTER_LARGE'];
 export class TulipFieldLayer {
  private objects:Phaser.GameObjects.Image[]=[];
+ private flowerCount=0;
  private patches:Patch[]=[];private visible:Patch[]=[];private cullAt=0;
  constructor(private scene:Phaser.Scene,readonly plan:TulipFieldPlan,private wind:WindSystem){
   this.ground();this.flowers();this.props();
@@ -25,8 +27,9 @@ export class TulipFieldLayer {
   }
  }
  private flowers(){
-  const atlas=this.scene.textures.get('tulip-garden'),source=atlas.getSourceImage() as HTMLImageElement;
-  const byPatch=new Map<string,Tulip[]>();for(const f of this.plan.flowers){const key=`${Math.floor(f.x/96)},${Math.floor(f.y/32)}`,list=byPatch.get(key)??[];list.push(f);byPatch.set(key,list);}
+  const atlas=this.scene.textures.get('tulip-flowers'),source=atlas.getSourceImage() as HTMLImageElement;
+  const readable=selectReadableTulips(this.plan.flowers);this.flowerCount=readable.length;
+  const byPatch=new Map<string,Tulip[]>();for(const f of readable){const key=`${Math.floor(f.x/96)},${Math.floor(f.y/32)}`,list=byPatch.get(key)??[];list.push(f);byPatch.set(key,list);}
   for(const [id,flowers] of byPatch){
    const [px,py]=id.split(',').map(Number),x=px*96,y=py*32,moving=flowers[0].animated;
    const w=88,h=56,padding=20,frames=moving?5:1,c=document.createElement('canvas');c.width=w*frames;c.height=h;const ctx=c.getContext('2d')!;ctx.imageSmoothingEnabled=false;
@@ -69,5 +72,5 @@ export class TulipFieldLayer {
    p.image.setFrame(Math.abs(response)<.025?0:1+Math.max(0,Math.min(3,Math.floor((response/Math.max(.03,this.wind.strength)*.5+.5)*4))));
   }
  }
- get diagnostics(){const moving=this.patches.filter(p=>p.moving).length;return {id:this.plan.zone.id,clusters:this.plan.flowers.length,patches:this.patches.length,animatedPatches:moving,animatedPercent:Math.round(moving/this.patches.length*100),visibleAnimated:this.visible.length,props:this.plan.props.length,obstacles:this.plan.obstacles.length,bench:'pinkTulipBench',archWalkable:true};}
+ get diagnostics(){const moving=this.patches.filter(p=>p.moving).length;return {id:this.plan.zone.id,clusters:this.plan.flowers.length,visibleFlowerModels:this.flowerCount,patches:this.patches.length,animatedPatches:moving,animatedPercent:Math.round(moving/this.patches.length*100),visibleAnimated:this.visible.length,props:this.plan.props.length,obstacles:this.plan.obstacles.length,bench:'pinkTulipBench',archWalkable:true};}
 }

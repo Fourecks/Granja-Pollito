@@ -21,7 +21,7 @@ export class ExteriorScene extends WorldScene {
  readonly wind=new WindSystem();
  private tulips!:TulipFieldLayer;private vegetation!:VegetationLayer;private terrain!:TerrainLayers;private water!:WaterLayer;private diagnosticAt=0;private entering=false;private celebration?:CelebrationEvent;
  constructor(runtime:FarmRuntime){super('Exterior',runtime);}
- preload(){this.load.image('actors','/assets/actors-v2.webp');this.load.atlas('vegetation','/assets/vegetation-atlas.png','/assets/vegetation-atlas.json');this.load.atlas('micro-grass','/assets/micro-grass-atlas.png','/assets/micro-grass-atlas.json');this.load.atlas('tulip-garden','/assets/tulip-garden-atlas.png','/assets/tulip-garden-atlas.json');}
+ preload(){this.load.image('actors','/assets/actors-v2.webp');this.load.atlas('vegetation','/assets/vegetation-atlas.png','/assets/vegetation-atlas.json');this.load.atlas('micro-grass','/assets/micro-grass-atlas.png','/assets/micro-grass-atlas.json');this.load.atlas('tulip-garden','/assets/tulip-garden-atlas.png','/assets/tulip-garden-atlas.json');this.load.atlas('tulip-flowers','/assets/tulip-flowers-v2.png','/assets/tulip-flowers-v2.json');}
  create(){
   createFrames(this,true);
   this.terrain=new TerrainLayers(this);this.water=new WaterLayer(this,this.terrain.masks);

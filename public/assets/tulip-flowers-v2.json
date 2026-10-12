@@ -1,0 +1,171 @@
+{
+  "frames": {
+    "PINK_TULIP_01": {
+      "frame": {
+        "x": 95,
+        "y": 55,
+        "w": 243,
+        "h": 427
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 243,
+        "h": 427
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 243,
+        "h": 427
+      }
+    },
+    "PINK_TULIP_02": {
+      "frame": {
+        "x": 470,
+        "y": 54,
+        "w": 263,
+        "h": 428
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 263,
+        "h": 428
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 263,
+        "h": 428
+      }
+    },
+    "PINK_TULIP_03": {
+      "frame": {
+        "x": 817,
+        "y": 57,
+        "w": 259,
+        "h": 425
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 259,
+        "h": 425
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 259,
+        "h": 425
+      }
+    },
+    "PINK_TULIP_04": {
+      "frame": {
+        "x": 1191,
+        "y": 51,
+        "w": 253,
+        "h": 431
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 253,
+        "h": 431
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 253,
+        "h": 431
+      }
+    },
+    "PINK_TULIP_BUD": {
+      "frame": {
+        "x": 105,
+        "y": 521,
+        "w": 220,
+        "h": 414
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 220,
+        "h": 414
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 220,
+        "h": 414
+      }
+    },
+    "PINK_TULIP_CLUSTER_SMALL": {
+      "frame": {
+        "x": 447,
+        "y": 537,
+        "w": 269,
+        "h": 399
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 269,
+        "h": 399
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 269,
+        "h": 399
+      }
+    },
+    "PINK_TULIP_CLUSTER_MEDIUM": {
+      "frame": {
+        "x": 784,
+        "y": 525,
+        "w": 368,
+        "h": 411
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 368,
+        "h": 411
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 368,
+        "h": 411
+      }
+    },
+    "PINK_TULIP_CLUSTER_LARGE": {
+      "frame": {
+        "x": 1152,
+        "y": 513,
+        "w": 342,
+        "h": 423
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 342,
+        "h": 423
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 342,
+        "h": 423
+      }
+    }
+  },
+  "meta": {
+    "image": "tulip-flowers-v2.png",
+    "size": {
+      "w": 1536,
+      "h": 1024
+    }
+  }
+}

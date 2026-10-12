@@ -16,7 +16,7 @@ export function blendVegetationBases(scene:Phaser.Scene,ctx:CanvasRenderingConte
   for(let i=0;i<count;i++){
    // Uneven offsets favour one side, never a ring repeated around every object.
    const x=p.x/2+(random()-.45)*Math.min(24,p.width*.45),y=p.y/2+(random()-.6)*8;
-   const size=2+Math.floor(random()*4),wet=kind==='wet';
+   const size=1+Math.floor(random()*3),wet=kind==='wet';
    if(![[0,0],[-size,-size],[size,0],[0,-size*2]].every(([dx,dy])=>valid(x+dx,y+dy,wet)))continue;
    let name=wet?'WATER_GRASS':kind==='bamboo'&&i%3===0?'LEAVES':'GRASS_SHORT';
    if(kind==='rock'&&random()<.18)name='ROCK_SMALL';
