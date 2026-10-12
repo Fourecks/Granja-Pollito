@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('nod
 const {execFileSync}=require('node:child_process');
 const output=fs.mkdtempSync(path.join(os.tmpdir(),'granja-foundation-'));
 try {
- execFileSync('./node_modules/.bin/tsc',['--target','es2022','--module','commonjs','--outDir',output,'--skipLibCheck','--esModuleInterop','src/game/navigation.ts','src/game/world/mapConfig.ts','src/game/world/zones.ts','src/game/world/collisions.ts','src/data/routes.ts','src/data/interiors.ts','src/data/celebration.ts','src/domain.ts','src/game/effects/particles.ts']);
+ execFileSync('./node_modules/.bin/tsc',['--target','es2022','--module','commonjs','--outDir',output,'--skipLibCheck','--esModuleInterop','src/game/navigation.ts','src/game/world/mapConfig.ts','src/game/world/zones.ts','src/game/world/collisions.ts','src/game/world/vegetationPlan.ts','src/data/routes.ts','src/data/interiors.ts','src/data/celebration.ts','src/domain.ts','src/game/effects/particles.ts']);
  const {NavigationGrid,inside,rectangle}=require(path.join(output,'game/navigation.js'));
  const {navigation,navigationFor}=require(path.join(output,'game/world/collisions.js'));
  const {zones,zoneById}=require(path.join(output,'game/world/zones.js'));
@@ -11,7 +11,18 @@ try {
  const {interiors}=require(path.join(output,'data/interiors.js'));
  const {gatheringPoints,celebrationHumans}=require(path.join(output,'data/celebration.js'));
  const {DEFAULT_STATE,runOfflineProgress,performTask}=require(path.join(output,'domain.js'));
- const nav=new NavigationGrid(navigation,7);let routes=0,samples=0;
+ const {createVegetationPlan,footprint,waterAt}=require(path.join(output,'game/world/vegetationPlan.js'));
+ const plan=createVegetationPlan();assert.deepEqual(plan,createVegetationPlan(),'Distribución determinista');
+ assert.ok(plan.plants.length>2500,'Densidad natural');
+ assert.ok(plan.plants.filter(p=>p.biome==='panda').length>100,'Hábitat panda');
+ assert.ok(plan.plants.filter(p=>p.biome==='north').length>200,'Bosque Norte');
+ assert.equal(plan.plants.filter(p=>p.biome==='landmark').length,10,'Landmarks conservados');
+ assert.ok(plan.plants.some(p=>p.name==='REEDS_01'&&waterAt(p.x,p.y)),'Juncos parcialmente en agua');
+ for(const p of plan.plants){if(p.solid)assert.ok(plan.obstacles.some(o=>inside([p.x,p.y],o)));for(const z of zones.filter(z=>['centralPlaza','cropsArea','jefeHouseArea','cowArea','chickenArea','mixedBarnArea','greenhouseArea','rabbitArea','sheepGoatArea'].includes(z.id)))assert.equal(inside([p.x,p.y],z.shape),false,'Parcela reservada '+z.id);}
+ const nav=new NavigationGrid({...navigation,obstacles:[...navigation.obstacles,...plan.obstacles]},7);
+ const trunk=plan.plants.find(p=>p.name==='TREE_GREEN_01');assert.ok(trunk);assert.equal(nav.canWalk(trunk.x,trunk.y),false,'Tronco bloqueado');assert.ok(trunk.height>80);assert.ok(Math.max(...footprint(trunk).map(p=>p[0]))-Math.min(...footprint(trunk).map(p=>p[0]))<trunk.width*.3,'Colisión solo base');
+ assert.ok(plan.plants.some(p=>p.ground&&p.name.startsWith('FLOWERS_')&&nav.canWalk(p.x,p.y)),'Flores transitables');
+ console.log(`Vegetación: ${plan.plants.length} instancias, ${plan.obstacles.length} bases sólidas, parcelas libres.`);let routes=0,samples=0;
  function check(start,goal,label,grid=nav){
   assert.ok(grid.canWalk(...start),'Inicio bloqueado: '+label+': '+start);assert.ok(grid.canWalk(...goal),'Destino bloqueado: '+label+': '+goal);
   const route=grid.path(start,goal);assert.ok(route.length,'Sin ruta: '+label);let prior=start;

@@ -1,0 +1,412 @@
+{
+  "frames": {
+    "grass_idle_0": {
+      "frame": {
+        "x": 177,
+        "y": 177,
+        "w": 64,
+        "h": 101
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 64,
+        "h": 101
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 101
+      }
+    },
+    "grass_idle": {
+      "frame": {
+        "x": 177,
+        "y": 177,
+        "w": 64,
+        "h": 101
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 64,
+        "h": 101
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 101
+      }
+    },
+    "grass_sway_1_0": {
+      "frame": {
+        "x": 446,
+        "y": 180,
+        "w": 76,
+        "h": 98
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 76,
+        "h": 98
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 76,
+        "h": 98
+      }
+    },
+    "grass_sway_1": {
+      "frame": {
+        "x": 446,
+        "y": 180,
+        "w": 76,
+        "h": 98
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 76,
+        "h": 98
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 76,
+        "h": 98
+      }
+    },
+    "grass_sway_2_0": {
+      "frame": {
+        "x": 735,
+        "y": 170,
+        "w": 65,
+        "h": 108
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 65,
+        "h": 108
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 65,
+        "h": 108
+      }
+    },
+    "grass_sway_2": {
+      "frame": {
+        "x": 735,
+        "y": 170,
+        "w": 65,
+        "h": 108
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 65,
+        "h": 108
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 65,
+        "h": 108
+      }
+    },
+    "grass_sway_3_0": {
+      "frame": {
+        "x": 1018,
+        "y": 180,
+        "w": 75,
+        "h": 98
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 75,
+        "h": 98
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 75,
+        "h": 98
+      }
+    },
+    "grass_sway_3": {
+      "frame": {
+        "x": 1018,
+        "y": 180,
+        "w": 75,
+        "h": 98
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 75,
+        "h": 98
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 75,
+        "h": 98
+      }
+    },
+    "grass_idle_1": {
+      "frame": {
+        "x": 158,
+        "y": 463,
+        "w": 96,
+        "h": 117
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 96,
+        "h": 117
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 117
+      }
+    },
+    "grass_sway_1_1": {
+      "frame": {
+        "x": 445,
+        "y": 463,
+        "w": 100,
+        "h": 117
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 100,
+        "h": 117
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 100,
+        "h": 117
+      }
+    },
+    "grass_sway_2_1": {
+      "frame": {
+        "x": 715,
+        "y": 463,
+        "w": 96,
+        "h": 117
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 96,
+        "h": 117
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 117
+      }
+    },
+    "grass_sway_3_1": {
+      "frame": {
+        "x": 1000,
+        "y": 469,
+        "w": 99,
+        "h": 111
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 99,
+        "h": 111
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 99,
+        "h": 111
+      }
+    },
+    "grass_idle_2": {
+      "frame": {
+        "x": 143,
+        "y": 746,
+        "w": 136,
+        "h": 126
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 136,
+        "h": 126
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 136,
+        "h": 126
+      }
+    },
+    "grass_sway_1_2": {
+      "frame": {
+        "x": 410,
+        "y": 747,
+        "w": 158,
+        "h": 125
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 158,
+        "h": 125
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 158,
+        "h": 125
+      }
+    },
+    "grass_sway_2_2": {
+      "frame": {
+        "x": 693,
+        "y": 739,
+        "w": 148,
+        "h": 133
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 148,
+        "h": 133
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 148,
+        "h": 133
+      }
+    },
+    "grass_sway_3_2": {
+      "frame": {
+        "x": 980,
+        "y": 747,
+        "w": 142,
+        "h": 125
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 142,
+        "h": 125
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 142,
+        "h": 125
+      }
+    },
+    "grass_idle_3": {
+      "frame": {
+        "x": 144,
+        "y": 1026,
+        "w": 135,
+        "h": 118
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 135,
+        "h": 118
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 135,
+        "h": 118
+      }
+    },
+    "grass_sway_1_3": {
+      "frame": {
+        "x": 423,
+        "y": 1020,
+        "w": 130,
+        "h": 124
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 130,
+        "h": 124
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 130,
+        "h": 124
+      }
+    },
+    "grass_sway_2_3": {
+      "frame": {
+        "x": 710,
+        "y": 1018,
+        "w": 121,
+        "h": 126
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 121,
+        "h": 126
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 121,
+        "h": 126
+      }
+    },
+    "grass_sway_3_3": {
+      "frame": {
+        "x": 995,
+        "y": 1029,
+        "w": 126,
+        "h": 115
+      },
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 126,
+        "h": 115
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 126,
+        "h": 115
+      }
+    }
+  },
+  "meta": {
+    "image": "micro-grass-atlas.png",
+    "size": {
+      "w": 1254,
+      "h": 1254
+    },
+    "app": "Granja Pollito micro grass"
+  }
+}

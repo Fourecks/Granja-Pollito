@@ -17,8 +17,15 @@ export class NavigationGrid {
   private rows: number;
   private cells: Uint8Array;
   private edges=new Map<number,boolean>();
+  private obstacleBuckets=new Map<string,Polygon[]>();
+  private bounds=new Map<Polygon,{minX:number;maxX:number;minY:number;maxY:number}>();
   constructor(readonly data: NavigationData, readonly radius = 3) {
     this.cell=data.cell??8;
+    for(const poly of [...data.walkable,...data.obstacles,...(data.water??[]),...(data.waterIslands??[]),...(data.bridges??[]),...(data.passages??[])]){
+      const xs=poly.map(p=>p[0]),ys=poly.map(p=>p[1]);this.bounds.set(poly,{minX:Math.min(...xs),maxX:Math.max(...xs),minY:Math.min(...ys),maxY:Math.max(...ys)});
+    }
+    for(const poly of data.obstacles){const b=this.bounds.get(poly)!;for(let y=Math.floor(b.minY/128);y<=Math.floor(b.maxY/128);y++)for(let x=Math.floor(b.minX/128);x<=Math.floor(b.maxX/128);x++){const key=`${x},${y}`,list=this.obstacleBuckets.get(key)??[];list.push(poly);this.obstacleBuckets.set(key,list);}}
+
     this.cols = Math.ceil(data.width / this.cell); this.rows = Math.ceil(data.height / this.cell);
     this.cells = new Uint8Array(this.cols * this.rows);
     for (let y = 0; y < this.rows; y++) for (let x = 0; x < this.cols; x++) this.cells[y * this.cols + x] = this.canWalk(...this.center(y * this.cols + x)) ? 1 : 0;
@@ -32,7 +39,7 @@ export class NavigationGrid {
       const onBridge=this.data.bridges?.some(poly=>inside(point,poly));
       if(water&&!onBridge&&!this.data.swims)return false;
       if(!this.data.walkable.some(poly=>inside(point,poly))&&!(water&&this.data.swims))return false;
-      if(this.data.obstacles.some(poly=>inside(point,poly)&&!(this.data.terrainObstacles?.includes(poly)&&this.data.passages?.some(p=>inside(point,p)))))return false;
+      if((this.obstacleBuckets.get(`${Math.floor(point[0]/128)},${Math.floor(point[1]/128)}`)??[]).some(poly=>inside(point,poly)&&!(this.data.terrainObstacles?.includes(poly)&&this.data.passages?.some(p=>inside(point,p)))))return false;
     }
     return true;
   }
@@ -41,11 +48,14 @@ export class NavigationGrid {
     // continuous clearance, including narrow fence corners missed by sampling.
     const dx=b[0]-a[0],dy=b[1]-a[1],cuts=[0,1];
     for(const [ox,oy] of [[0,0],[this.radius,0],[-this.radius,0],[0,this.radius],[0,-this.radius],[this.radius*.707,this.radius*.707],[-this.radius*.707,this.radius*.707],[this.radius*.707,-this.radius*.707],[-this.radius*.707,-this.radius*.707]]){
-     for(const polygon of [...this.data.walkable,...this.data.obstacles,...(this.data.water??[]),...(this.data.waterIslands??[]),...(this.data.bridges??[]),...(this.data.passages??[])])for(let i=0;i<polygon.length;i++){
+     for(const polygon of [...this.data.walkable,...this.data.obstacles,...(this.data.water??[]),...(this.data.waterIslands??[]),...(this.data.bridges??[]),...(this.data.passages??[])]){
+      const bounds=this.bounds.get(polygon)!;
+      if(bounds.maxX<Math.min(a[0],b[0])+ox||bounds.minX>Math.max(a[0],b[0])+ox||bounds.maxY<Math.min(a[1],b[1])+oy||bounds.minY>Math.max(a[1],b[1])+oy)continue;
+      for(let i=0;i<polygon.length;i++){
       const c=polygon[i],d=polygon[(i+1)%polygon.length],ex=d[0]-c[0],ey=d[1]-c[1],den=dx*ey-dy*ex;if(Math.abs(den)<1e-9)continue;
       const cx=c[0]-a[0]-ox,cy=c[1]-a[1]-oy,t=(cx*ey-cy*ex)/den,u=(cx*dy-cy*dx)/den;
       if(t>0&&t<1&&u>=0&&u<=1)cuts.push(t);
-     }
+     }}
     }
     cuts.sort((x,y)=>x-y);
     for(let i=0;i<cuts.length;i++){const t=cuts[i];if(!this.canWalk(a[0]+dx*t,a[1]+dy*t))return false;if(i){const mid=(t+cuts[i-1])/2;if(!this.canWalk(a[0]+dx*mid,a[1]+dy*mid))return false;}}

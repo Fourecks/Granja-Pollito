@@ -1,4 +1,4 @@
-> **Mapa actual: reconstrucción del plano maestro, fase 1.** El exterior usa terreno, agua, topografía, parcelas y caminos por capas/chunks. Consulta [la documentación de fase 1](docs/world-phase-1.md) para la arquitectura, escala y pruebas. Los interiores y la sorpresa existentes se conservan; sus edificios y decoraciones no se dibujan en esta fase.
+> **Mapa actual: Capa 2 — vegetación y naturaleza.** La geometría aprobada de Capa 1 permanece intacta. El mundo incorpora atlas pixel art, bosque, bambú, jardines, orillas naturales, costa y vida ambiental. Consulta [la documentación de Capa 2](docs/world-phase-2.md) y [la base de Capa 1](docs/world-phase-1.md). No se añaden edificios ni animales de Capa 3.
 
 # Granja Pollito 🐥
 
