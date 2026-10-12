@@ -12,8 +12,8 @@ export class InteriorScene extends WorldScene {
   const config=interiors[this.id];this.add.image(0,0,`room-${this.id}`).setOrigin(0).setDisplaySize(1672,941).setDepth(0);
   this.nav=new NavigationGrid({width:1672,height:941,walkable:config.walkable,obstacles:config.obstacles},7);
   const c=this.cameras.main,fit=Math.max(this.scale.width/1672,this.scale.height/941);
-  c.setBounds(0,0,1672,941).setZoom(Math.max(fit,this.scale.width<760?.72:fit)).centerOn(835,510);
-  this.controls=new CameraControls(this,fit,2.4);
+  c.setBounds(0,0,1672,941).setZoom(Math.max(fit,this.scale.width/(Math.min(window.devicePixelRatio||1,2))<760?.72*Math.min(window.devicePixelRatio||1,2):fit)).centerOn(835,510);
+  this.controls=new CameraControls(this,fit,2.4*Math.min(window.devicePixelRatio||1,2));
   if(this.id!=='home')this.addWorkers(this.id==='shed'?[[780,550],[850,590],[910,560]]:[[710,550],[830,560],[930,550]]);
   if(this.id==='coop'){
    for(let i=0;i<12;i++){const p:Point=[500+(i%4)*180,410+Math.floor(i/4)*70];this.actor(this.runtime.props.current.characters.filter(a=>a.kind==='chicken')[i]?.id??`inside-chick-${i}`,'chick',p,[[p[0]+40,p[1]+10],[p[0]-30,p[1]+15]],this.nav);}

@@ -30,9 +30,9 @@ El fondo integra edificios, vegetación y props en una composición única. Las 
 
 `src/data/world.ts` contiene dimensiones, polígonos walkable/non-walkable, agua, puente, edificios, puertas, hotspots y máscaras de profundidad. Las coordenadas se expresan en el mapa de 1672 × 940. Cambia posiciones y polígonos junto con el arte cuando recompongas el mapa.
 
-`src/data/farm.ts` contiene pollitos con nombre, Margarita, diálogos, posiciones y patrullas. Agrega un registro a `characters`; los pollitos del corral usan su cuadrícula restringida y Miel utiliza la ruta del puente. Hay cuatro pollitos ambientales adicionales y otra vaca en `ExteriorScene`. Los animales no ejecutan físicamente los trabajos humanos, pero se conservan sus asignaciones anteriores como responsables de la granja.
+`src/data/farm.ts` contiene pollitos con nombre, Margarita, diálogos, posiciones y patrullas. Agrega un registro a `characters`; los pollitos usan el suelo global, las vacas conservan su corral y Miel puede utilizar el puente. Hay cuatro pollitos ambientales adicionales y otra vaca en `ExteriorScene`. Los animales no ejecutan físicamente los trabajos humanos, pero se conservan sus asignaciones anteriores como responsables de la granja.
 
-`src/data/routes.ts` define los tres trabajadores (Alma, Bruno y Vera), su posición, patrulla, especialidad y destinos de cada tarea, tanto exteriores como interiores. Se pueden asignar a cualquiera de las tareas. Si un trabajador está ocupado, la siguiente tarea espera; los otros trabajadores y la interfaz continúan activos. Una misma tarea no puede iniciarse dos veces. La secuencia es caminar → actuar → completar y actualizar recursos → regresar. `performTask` se llama al finalizar la acción, no mediante un temporizador global independiente del recorrido. El ordeño coloca a Vera junto a Margarita, usa el frame arrodillado y muestra un cubo con leche.
+`src/data/routes.ts` define los tres trabajadores (Minnie, Pollito y Kiara), su posición, patrulla, especialidad y destinos de cada tarea, tanto exteriores como interiores. Se pueden asignar a cualquiera de las tareas. Si un trabajador está ocupado, la siguiente tarea espera; los otros trabajadores y la interfaz continúan activos. Una misma tarea no puede iniciarse dos veces. La secuencia es caminar → actuar → completar y actualizar recursos → regresar. `performTask` se llama al finalizar la acción, no mediante un temporizador global independiente del recorrido. El ordeño coloca a Kiara junto a Margarita, usa el frame arrodillado y muestra un cubo con leche.
 
 `src/data/interiors.ts` define fondos, títulos, suelo y muebles sólidos de cada habitación. La puerta del exterior y el botón Entrar abren una escena de juego con fade. La puerta interior y Salir regresan al exterior sin recargar. Los trabajos ya iniciados continúan aunque cambies de habitación.
 
@@ -52,6 +52,27 @@ El trabajo visual en curso es transitorio: al recargar, la tarea conserva su est
 
 ## Assets y publicación
 
-Los recursos de esta pasada son originales, generados para el proyecto a partir del concepto aportado. Fuentes y procedencia en `ASSET_LICENSES.md`. Los fondos WebP reducen el peso y los interiores se cargan bajo demanda; los personajes y cultivos usan atlases PNG transparentes. Phaser se carga como chunk separado y sigue superando 500 KB por sí mismo; la aplicación principal y las escenas quedan separadas.
+Los recursos de esta pasada son originales, generados para el proyecto a partir del concepto aportado. Fuentes y procedencia en `ASSET_LICENSES.md`. Los fondos WebP reducen el peso y los interiores se cargan bajo demanda; los personajes y cultivos usan atlases WebP transparentes sin pérdida. Phaser se carga como chunk separado y sigue superando 500 KB por sí mismo; la aplicación principal y las escenas quedan separadas.
 
 Repositorio existente: Fourecks/Granja-Pollito. Render mantiene `npm ci && npm run build`, publica `dist` y sirve la SPA. URL: https://granja-pollito.onrender.com/.
+
+
+## Mundo navegable y celebración temporal
+
+El mapa conserva su composición y mide 1672 × 941 píxeles nativos. La versión refinada se guarda en WebP **sin pérdida**. El canvas usa píxeles físicos a `devicePixelRatio` (máximo 2), con escalado de entrada/cámara coordinado, sin smoothing ni ampliación CSS como sustituto de resolución. Las máscaras usan las mismas coordenadas 1672 × 940 del mundo. El zoom extremo muestra los píxeles del arte; no se afirma que el fondo sea 4K.
+
+La navegación incluye césped abierto y caminos conectados. A* utiliza una cola binaria; la validación divide cada segmento en sus intersecciones con los límites del terreno, evitando atajos por esquinas de cercas. El puente solo permite atravesar el agua: no anula otras colisiones. Árboles y arbustos utilizan huellas pequeñas en su base. Edificios y copas tienen capas de profundidad; habitantes y props se ordenan por Y.
+
+`src/game/entities.ts` define objetos reutilizables (`id`, `position`, `sprite`, `collision`, `interaction`, `depthAnchor`). `entityCollision` transforma huellas locales a coordenadas globales. `EntitySystem` crea sombras, sprites, profundidad e interacción. La celebración usa esta misma geometría para sus rutas; no es una imagen completa superpuesta.
+
+Minnie, Pollito y Kiara recorren destinos repartidos por la granja. Sus asignaciones antiguas se migran al cargar sin alterar recursos. Chispa y Nube son perros permanentes, con sprites de reposo, pasos y sentado; alternan exploración, carrera, compañía, observación, siesta y descanso. `nube-dog` distingue a la mascota del pollito Nube existente.
+
+### Desactivar o personalizar
+
+En `src/data/celebration.ts`, cambia `CELEBRATION_MODE` a `false`: desaparecen props temporales, invitados, colisiones y lanzamiento; permanecen los humanos, mascotas, tareas e interiores. Edita `celebrationMessages` para cambiar textos y posiciones de los letreros. Los mensajes se pueden tocar para leerlos en el panel. `celebrationEntities` contiene la mesa, pastel, flores, globos, regalos, foto, lámparas, banderines y recuerdos LDC. Los postes tienen colisión pequeña y las cuerdas son decorativas.
+
+El lanzador y el botón «🎆 Iniciar sorpresa» activan `CelebrationEvent`. Los participantes calculan rutas, esperan a sus compañeros y celebran. Las tareas conservan prioridad; un trabajador ocupado se une al terminar. No hay teletransportes. Al terminar, vuelven la luz, la cámara y los comportamientos habituales; se puede repetir.
+
+`FireworksSystem` gestiona cohetes, trayectorias, estelas y cinco explosiones mediante partículas con velocidad, gravedad y vida. `ParticleTextSystem` rasteriza las letras en un canvas oculto y obtiene destinos; lo visible son partículas que convergen en «ORGULLOSOS DE TI / POLLITO», titilan y terminan en una explosión con corazones. La cámara se desplaza suavemente y permite arrastre/zoom; la interacción cancela el movimiento cinematográfico. El audio sintetizado es suave y solo se abre tras la activación del usuario.
+
+El presupuesto inicial es 650 partículas para pantallas estrechas y 1600 para escritorio; puede bajar a 420/900 si hay cuadros lentos. Se reserva presupuesto para que las letras no pierdan puntos por las explosiones. Los interiores siguen cargándose bajo demanda. `npm test` añade destinos globales, reunión, activación/desactivación de colisiones y pruebas de física, límite, convergencia y reinicio de partículas. En desarrollo, `data-world`/`data-stage` del canvas permiten comprobar posiciones y rendimiento; no se publican como interfaz de usuario.

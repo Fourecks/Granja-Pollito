@@ -10,7 +10,7 @@ export function inside(point: Point, polygon: Polygon): boolean {
   }
   return result;
 }
-export interface NavigationData { width: number; height: number; walkable: Polygon[]; obstacles: Polygon[]; bridges?: Polygon[]; }
+export interface NavigationData { width: number; height: number; walkable: Polygon[]; obstacles: Polygon[]; bridges?: Polygon[]; water?:Polygon[]; }
 export class NavigationGrid {
   readonly cell = 8;
   private cols: number;
@@ -26,16 +26,27 @@ export class NavigationGrid {
     for (const [dx, dy] of [[0, 0], [this.radius, 0], [-this.radius, 0], [0, this.radius], [0, -this.radius]]) {
       const point: Point = [x + dx, y + dy];
       if (!this.data.walkable.some(poly => inside(point, poly))) return false;
-      if (!this.data.bridges?.some(poly => inside(point, poly)) && this.data.obstacles.some(poly => inside(point, poly))) return false;
+      const onBridge=this.data.bridges?.some(poly=>inside(point,poly));
+      if(this.data.obstacles.some(poly=>inside(point,poly)&&!(onBridge&&this.data.water?.includes(poly))))return false;
     }
     return true;
   }
   segment(a: Point, b: Point): boolean {
-    const distance = Math.hypot(b[0] - a[0], b[1] - a[1]);
-    const steps = Math.max(1, Math.ceil(distance / .75));
-    for (let i = 0; i <= steps; i++) if (!this.canWalk(a[0] + (b[0] - a[0]) * i / steps, a[1] + (b[1] - a[1]) * i / steps)) return false;
+    // Split at every terrain boundary for each footprint probe. Midpoints prove
+    // continuous clearance, including narrow fence corners missed by sampling.
+    const dx=b[0]-a[0],dy=b[1]-a[1],cuts=[0,1];
+    for(const [ox,oy] of [[0,0],[this.radius,0],[-this.radius,0],[0,this.radius],[0,-this.radius]]){
+     for(const polygon of [...this.data.walkable,...this.data.obstacles,...(this.data.bridges??[])])for(let i=0;i<polygon.length;i++){
+      const c=polygon[i],d=polygon[(i+1)%polygon.length],ex=d[0]-c[0],ey=d[1]-c[1],den=dx*ey-dy*ex;if(Math.abs(den)<1e-9)continue;
+      const cx=c[0]-a[0]-ox,cy=c[1]-a[1]-oy,t=(cx*ey-cy*ex)/den,u=(cx*dy-cy*dx)/den;
+      if(t>0&&t<1&&u>=0&&u<=1)cuts.push(t);
+     }
+    }
+    cuts.sort((x,y)=>x-y);
+    for(let i=0;i<cuts.length;i++){const t=cuts[i];if(!this.canWalk(a[0]+dx*t,a[1]+dy*t))return false;if(i){const mid=(t+cuts[i-1])/2;if(!this.canWalk(a[0]+dx*mid,a[1]+dy*mid))return false;}}
     return true;
   }
+
   private center(index: number): [number, number] { return [(index % this.cols + .5) * this.cell, (Math.floor(index / this.cols) + .5) * this.cell]; }
   nearest(point: Point): [number, number] {
     if (this.canWalk(...point)) return [point[0], point[1]];
@@ -57,12 +68,14 @@ export class NavigationGrid {
       return best;
     };
     const first = closest(start), last = closest(goal);if(first<0||last<0)return [];
-    const open = new Set([first]), visited = new Set<number>();
+    const visited = new Set<number>(),heap:Array<{id:number;score:number}>=[];
+    const push=(id:number,score:number)=>{heap.push({id,score});let i=heap.length-1;while(i){const parent=(i-1)>>1;if(heap[parent].score<=score)break;[heap[parent],heap[i]]=[heap[i],heap[parent]];i=parent;}};
+    const pop=()=>{const result=heap[0],last=heap.pop()!;if(heap.length){heap[0]=last;let i=0;for(;;){let child=i*2+1;if(child>=heap.length)break;if(child+1<heap.length&&heap[child+1].score<heap[child].score)child++;if(heap[i].score<=heap[child].score)break;[heap[i],heap[child]]=[heap[child],heap[i]];i=child;}}return result.id;};
     const costs = new Map([[first, 0]]), previous = new Map<number, number>();
     const heuristic = (i: number) => Math.hypot(this.center(i)[0] - goal[0], this.center(i)[1] - goal[1]);
-    while (open.size) {
-      let current = -1, best = Infinity;
-      for (const i of open) { const score = costs.get(i)! + heuristic(i); if (score < best) { current = i; best = score; } }
+    push(first,heuristic(first));
+    while (heap.length) {
+      const current=pop();if(visited.has(current))continue;
       if (current === last) {
         const points: Point[] = [goal]; let cursor = current;
         while (cursor !== first) { points.unshift(this.center(cursor)); cursor = previous.get(cursor)!; }
@@ -72,7 +85,7 @@ export class NavigationGrid {
         let prior: Point = start; for (const point of result) { if (!this.segment(prior, point)) return []; prior = point; }
         return result;
       }
-      open.delete(current); visited.add(current);
+      visited.add(current);
       const cx = current % this.cols, cy = Math.floor(current / this.cols);
       for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
         const x = cx + dx, y = cy + dy, next = y * this.cols + x;
@@ -83,7 +96,7 @@ export class NavigationGrid {
         let safe=this.edges.get(edgeKey);if(safe===undefined){safe=this.segment(this.center(current),this.center(next));this.edges.set(edgeKey,safe);}if(!safe)continue;
         const cost = costs.get(current)! + this.cell * (dx && dy ? Math.SQRT2 : 1);
         if (cost >= (costs.get(next) ?? Infinity)) continue;
-        costs.set(next, cost); previous.set(next, current); open.add(next);
+        costs.set(next, cost); previous.set(next, current); push(next,cost+heuristic(next));
       }
     }
     return [];

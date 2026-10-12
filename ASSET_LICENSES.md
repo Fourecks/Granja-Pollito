@@ -4,10 +4,10 @@
 
 El concepto `Granja Pollito_ Un Día Bonito (1).png` fue aportado por el usuario como concepto creado para este proyecto y como referencia autorizada para su implementación. Los siguientes recursos se generaron específicamente con ImageGen a partir de esa referencia, sin extraer recursos de videojuegos o packs comerciales:
 
-- `exterior-v2.webp`: composición exterior, edificios, plaza, corrales, vegetación, caminos, río y puente; las parcelas se dejaron con suelo para recibir cultivos dinámicos.
-- `actors-v2.png`: atlas 4 × 4 de pollito amarillo juvenil y tres trabajadores, con poses de reposo, pasos y trabajo.
-- `cows-v2.png`: atlas de vaca en reposo y comiendo.
-- `crop-stages-v2.png`: atlas 4 × 3 de semillas, brotes, plantas jóvenes y maduras de zanahoria, col y tomate.
+- `exterior-hd.webp`: composición exterior, edificios, plaza, corrales, vegetación, caminos, río y puente; las parcelas se dejaron con suelo para recibir cultivos dinámicos.
+- `actors-v2.webp`: atlas 4 × 4 de pollito amarillo juvenil y tres trabajadores, con poses de reposo, pasos y trabajo.
+- `cows-v2.webp`: atlas de vaca en reposo y comiendo.
+- `crop-stages-v2.webp`: atlas 4 × 3 de semillas, brotes, plantas jóvenes y maduras de zanahoria, col y tomate.
 - `interior-home-v2.webp`, `interior-coop-v2.webp`, `interior-barn-v2.webp`, `interior-shed-v2.webp`: interiores originales de casa, gallinero, establo e invernadero.
 
 Los fondos se convirtieron a WebP (calidad 94); los atlases se recortan en frames al cargar en Phaser y conservan su transparencia. Las sombras, ondas, reflejos, humedad y efectos de tareas son gráficos originales de Phaser. No se atribuye CC0 a estas imágenes generadas: no son un pack externo con esa licencia.
@@ -19,3 +19,14 @@ Phaser 4.2.1, Phaser Studio Inc. y contribuidores. Licencia MIT del paquete npm.
 ## Recursos retirados de la pasada anterior
 
 Los sprites de gallinas adultas y el tileset anterior de cultivos se sustituyeron en esta pasada. Sus créditos históricos eran Proyd, [Chicken and pen](https://opengameart.org/content/chicken-and-pen), CC0, y pixel32, [Pixel farm and shack](https://opengameart.org/content/pixel-farm-and-shack), CC0. Ya no son utilizados ni incluidos en los assets activos del proyecto.
+
+
+## Actualización del mundo y celebración
+
+`Granja pixel art de celebración y alegría.png` es la referencia aportada por el usuario para el aspecto de las mascotas y la fiesta. Se generaron recursos originales específicos con ImageGen:
+
+- `exterior-hd.webp`: refinamiento de nitidez del mismo mapa, conservando composición, sin nuevos NPC ni decoración horneada; fuente 1672 × 941, conversión WebP sin pérdida.
+- `dogs.webp`: atlas 4 × 2 transparente de Chihuahua café con mancha en un ojo y Maltés blanca, reposo, dos pasos y sentado.
+- `celebration-props.webp`: atlas 4 × 2 de objetos separados: letrero, mesa/pastel, fondo para fotos, flores, globos, farol, caja LDC y regalos. Se recortan como sprites independientes.
+
+Los tres atlases anteriores de habitantes, vacas y cultivos también se convirtieron a WebP **sin pérdida**, preservando píxeles y transparencia. Las fuentes PNG generadas permanecen fuera del repositorio. Los banderines, cascos/accesorios de invitados, lanzador, partículas, texto luminoso y audio sintetizado se construyen mediante código original del proyecto. No se utilizan GIF, vídeos ni imágenes estáticas de fuegos artificiales.

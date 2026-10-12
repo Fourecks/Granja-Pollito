@@ -4,9 +4,10 @@ export class CameraControls {
  private dragging=false; private distance=0; private start={x:0,y:0}; private last={x:0,y:0}; private velocity={x:0,y:0};
  constructor(private scene:Phaser.Scene, private minZoom:number, private maxZoom=2.4) {
   scene.input.addPointer(1);
+  scene.scale.on(Phaser.Scale.Events.RESIZE,()=>{this.minZoom=Math.max(scene.scale.width/1672,scene.scale.height/941);if(scene.cameras.main.zoom<this.minZoom)scene.cameras.main.setZoom(this.minZoom);});
   const touches=()=>[scene.input.pointer1,scene.input.pointer2].filter(p=>p.isDown);
   scene.input.on('pointerdown',(p:Phaser.Input.Pointer)=>{
-   if(p.button!==0)return;const fingers=touches();this.velocity={x:0,y:0};
+   if(p.button!==0)return;scene.cameras.main.panEffect.reset();scene.cameras.main.zoomEffect.reset();const fingers=touches();this.velocity={x:0,y:0};
    if(fingers.length>1){this.distance=Phaser.Math.Distance.Between(fingers[0].x,fingers[0].y,fingers[1].x,fingers[1].y);this.dragging=false;this.moved=true;return;}
    this.start=this.last={x:p.x,y:p.y};this.dragging=true;this.moved=false;
   });
@@ -24,6 +25,6 @@ export class CameraControls {
   const onZoom=(event:Event)=>{if(scene.input.enabled)this.zoom((event as CustomEvent<number>).detail);};
   window.addEventListener('farm-zoom',onZoom);scene.events.once('shutdown',()=>window.removeEventListener('farm-zoom',onZoom));
  }
- zoom(delta:number){const c=this.scene.cameras.main;c.setZoom(Phaser.Math.Clamp(c.zoom*(delta<0?1.12:.89),this.minZoom,this.maxZoom));}
+ zoom(delta:number){const c=this.scene.cameras.main;c.zoomEffect.reset();c.setZoom(Phaser.Math.Clamp(c.zoom*(delta<0?1.12:.89),this.minZoom,this.maxZoom));}
  update(delta:number){if(!this.scene.input.enabled)return;if(!this.dragging&&(Math.abs(this.velocity.x)+Math.abs(this.velocity.y)>.02)){const c=this.scene.cameras.main;c.scrollX+=this.velocity.x*delta;c.scrollY+=this.velocity.y*delta;this.velocity.x*=.9;this.velocity.y*=.9;}}
 }

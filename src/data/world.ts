@@ -8,6 +8,8 @@ export const waterZones: Polygon[] = [
 ];
 export const bridge: Polygon = [[1380,465],[1410,450],[1560,497],[1537,526]];
 export const walkableZones: Polygon[] = [
+ // Open grass and connected paths; dense forest remains outside the authored ground.
+ [[80,290],[460,270],[495,160],[570,95],[635,105],[648,278],[958,278],[990,301],[1380,264],[1442,350],[1390,438],[1585,540],[1640,555],[1595,603],[1495,559],[1380,526],[1230,564],[1165,635],[1010,684],[860,682],[750,645],[620,648],[440,710],[370,740],[265,842],[175,855],[155,758],[205,660],[130,614],[80,522],[125,438],[80,390]],
  coopPen, cowPen, rectangle(646,337,332,153), rectangle(420,470,95,25),
  ...corridor([[455,366],[550,392],[640,410],[680,385]],27),
  ...corridor([[718,357],[730,303],[738,267]],22),
@@ -19,10 +21,20 @@ export const walkableZones: Polygon[] = [
  rectangle(1060,472,250,81), rectangle(1550,495,88,70), bridge,
 ];
 export const solidZones: Polygon[] = [
- rectangle(140,99,283,181), rectangle(650,55,289,199), rectangle(1010,115,287,168),
+ rectangle(140,188,283,92), rectangle(650,170,289,84), rectangle(1010,222,287,61),
  rectangle(1025,394,120,110), rectangle(730,369,95,59),
  rectangle(407,497,300,93), rectangle(848,525,144,70),
- rectangle(280,460,70,88), rectangle(1195,435,73,57),
+ rectangle(312,516,18,25), rectangle(1215,478,15,22),
+ rectangle(767,310,50,18), rectangle(945,401,33,19), rectangle(850,534,30,26),
+ rectangle(704,581,27,19), rectangle(803,635,51,27),
+ ...corridor([[452,468],[603,471],[778,543]],3),
+ ...corridor([[455,389],[477,371]],4),
+ ...corridor([[505,338],[515,326]],4),
+ ...corridor([[99,312],[118,278]],4),
+ ...corridor([[1300,354],[1335,344],[1370,320]],4),
+ ...corridor([[374,500],[375,539],[543,603],[672,592]],4),
+ ...corridor([[862,577],[953,606],[1030,569]],4),
+ ...corridor([[1347,391],[1347,452]],4),
  // Fence rails: only the authored gate gaps are passable.
  ...corridor([[99,365],[292,411],[455,389]],5),
  ...corridor([[1160,310],[1220,343],[1300,354]],5),
@@ -47,9 +59,14 @@ export const worldObjects: WorldObjectData[] = [
  {id:'well',x:789,y:393,hitWidth:80,hitHeight:54},
 ];
 export const mapDecorations = [
+ {id:'coop-roof',depth:280,polygon:[[128,94],[307,101],[419,168],[422,276],[320,280],[143,274]] as Polygon},
+ {id:'home-roof',depth:254,polygon:[[648,57],[814,39],[923,131],[941,229],[850,256],[652,245]] as Polygon},
+ {id:'barn-roof',depth:283,polygon:[[1008,122],[1177,84],[1293,143],[1300,275],[1145,296],[1012,274]] as Polygon},
+ {id:'shed-roof',depth:504,polygon:[[1023,395],[1095,374],[1149,424],[1153,492],[1059,511],[1023,482]] as Polygon},
+
  {id:'coop-front', depth:414, polygon:[[85,340],[293,393],[470,355],[477,396],[292,432],[90,378]] as Polygon},
  {id:'garden-tree',depth:554,polygon:[[268,429],[331,419],[378,465],[373,510],[333,546],[284,519],[264,478]] as Polygon},
  {id:'barn-front',depth:361,polygon:[[1121,305],[1290,340],[1370,302],[1378,330],[1290,368],[1114,329]] as Polygon},
  {id:'greenhouse-bush',depth:501,polygon:[[1147,416],[1220,410],[1262,445],[1255,495],[1194,514],[1145,481]] as Polygon},
 ];
-export const navigation = { ...MAP, walkable: walkableZones, obstacles: solidZones, bridges: [bridge] };
+export const navigation = { ...MAP, walkable: walkableZones, obstacles: solidZones, bridges: [bridge], water:waterZones };

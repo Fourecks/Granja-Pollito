@@ -3,10 +3,11 @@ import { NavigationGrid, type Point } from './navigation';
 import { workers, taskRoutes } from '../data/routes';
 import type { FarmRuntime } from './types';
 import type { TaskId } from '../domain';
+import { globalDestinations } from '../data/celebration';
 import type { CameraControls } from './camera';
 export interface Actor {
- id:string; kind:'chick'|'worker'|'cow'; row:number; x:number; y:number; home:Point; patrol:Point[]; route:Point[]; step:number;
- sprite:Phaser.GameObjects.Sprite; shadow:Phaser.GameObjects.Ellipse; nav:NavigationGrid; nextPatrol:number; sleeping?:boolean;
+ id:string; kind:'chick'|'worker'|'cow'|'dog'; row:number; x:number; y:number; home:Point; patrol:Point[]; route:Point[]; step:number;
+ sprite:Phaser.GameObjects.Sprite; shadow:Phaser.GameObjects.Ellipse; nav:NavigationGrid; nextPatrol:number; sleeping?:boolean; state:'IDLE'|'WALK'|'WORK'|'OBSERVE'|'CELEBRATE'|'RUN'|'SIT'|'SLEEP'|'FOLLOW'|'DANCE'|'LOOK_UP'; eventTarget?:Point; accessory?:Phaser.GameObjects.Graphics; variant?:number;
 }
 interface Job {task:TaskId;worker:Actor;phase:'walk'|'action';until:number;effect:Phaser.GameObjects.Container|null;}
 export abstract class WorldScene extends Phaser.Scene {
@@ -16,12 +17,14 @@ export abstract class WorldScene extends Phaser.Scene {
  protected actor(id:string,kind:Actor['kind'],point:Point,patrol:Point[],nav:NavigationGrid,row=0,sleeping=false):Actor {
   const initial=nav.nearest(point),factor=this.interior?2:1;
   const shadow=this.add.ellipse(initial[0],initial[1],(kind==='cow'?49:kind==='worker'?17:13)*factor,(kind==='cow'?13:5)*factor,0x543b26,.28).setDepth(initial[1]-.1);
-  const sprite=this.add.sprite(...initial,kind==='cow'?'cows':'actors',kind==='worker'?row*4:0)
-   .setDisplaySize((kind==='cow'?80:kind==='worker'?46:34)*factor,(kind==='cow'?80:kind==='worker'?46:34)*factor)
-   .setOrigin(.5,kind==='chick'?.79:kind==='cow'?.82:.96).setDepth(initial[1]);
+  const sprite=this.add.sprite(...initial,kind==='cow'?'cows':kind==='dog'?'dogs':'actors',kind==='worker'||kind==='dog'?row*4:0)
+   .setDisplaySize((kind==='cow'?80:kind==='worker'?46:kind==='dog'?37:34)*factor,(kind==='cow'?80:kind==='worker'?46:kind==='dog'?37:34)*factor)
+   .setOrigin(.5,kind==='chick'?.79:kind==='cow'?.82:kind==='dog'?.9:.96).setDepth(initial[1]);
   sprite.setInteractive({useHandCursor:true});sprite.on('pointerup',()=>{if(!this.controls.moved)this.runtime.props.current.onSelect(id);});
-  const actor:Actor={id,kind,row,x:initial[0],y:initial[1],home:initial,patrol,route:[],step:0,sprite,shadow,nav,nextPatrol:1000+this.actors.length*370,sleeping};this.actors.push(actor);return actor;
+  const actor:Actor={id,kind,row,x:initial[0],y:initial[1],home:initial,patrol,route:[],step:0,sprite,shadow,nav,nextPatrol:1000+this.actors.length*370,sleeping,state:sleeping?'SLEEP':'IDLE'};this.actors.push(actor);return actor;
  }
+ isBusy(id:string){return this.runtime.busyWorkers.has(id);}
+ protected addDogs(){this.actor('chispa','dog',[718,439],globalDestinations,this.nav,0);this.actor('nube-dog','dog',[848,448],[...globalDestinations].reverse(),this.nav,1);}
  protected addWorkers(points?:Point[]){workers.forEach((worker,i)=>this.actor(worker.id,'worker',points?.[i]??worker.home,points?[[points[i][0]+35,points[i][1]],[points[i][0]-25,points[i][1]+25]]:worker.path,this.nav,worker.row));}
  update(time:number,elapsed:number){
   const delta=Math.min(elapsed,80);this.controls?.update(delta);
@@ -40,35 +43,40 @@ export abstract class WorldScene extends Phaser.Scene {
    const goal=this.interior?route.interiorPoint:route.point;
    const path=worker.nav.path([worker.x,worker.y],goal);
    if(!path.length){this.runtime.completed.add(task);props.onTaskError(task,'No hay una ruta transitable hacia esta tarea.');continue;}
-   worker.route=path;worker.sleeping=false;
+   worker.route=path;worker.sleeping=false;worker.state='WALK';
    this.runtime.busyWorkers.set(workerId,task);
    this.jobs.set(workerId,{task,worker,phase:'walk',until:0,effect:null});
   }
   for(const actor of this.actors){
    const job=this.jobs.get(actor.id);
    const sharedTask=this.runtime.busyWorkers.get(actor.id),elsewhere=sharedTask&&this.runtime.owners.get(sharedTask)!==this.sys.settings.key;
-   actor.shadow.setVisible(!elsewhere);if(elsewhere){actor.sprite.setVisible(false);continue;}
-   if(job?.phase==='action'){
+   actor.shadow.setVisible(!elsewhere);if(elsewhere){actor.sprite.setVisible(false);actor.accessory?.setVisible(false);continue;}
+   if(job?.phase==='action'){actor.state='WORK';
     actor.sprite.setFlipX(job.task==='collect-milk').setFrame(actor.row*4+3).setY(actor.y+Math.sin(time/180)*.6);
     if(time>=job.until){job.effect?.destroy();this.jobs.delete(actor.id);this.runtime.busyWorkers.delete(actor.id);this.runtime.completed.add(job.task);this.runtime.props.current.onTaskComplete(job.task);actor.route=actor.nav.path([actor.x,actor.y],actor.home);actor.nextPatrol=time+6500;}
     continue;
    }
-   if(actor.route.length){
+   if(actor.route.length){if(!['RUN','FOLLOW'].includes(actor.state))actor.state='WALK';
     const target=actor.route[0],dx=target[0]-actor.x,dy=target[1]-actor.y,distance=Math.hypot(dx,dy);
-    const speed=(actor.kind==='worker'?95:actor.kind==='cow'?10:24)*(this.interior?1.5:1),move=Math.min(distance,speed*delta/1000);
+    const speed=(actor.kind==='worker'?95:actor.kind==='cow'?10:actor.kind==='dog'?actor.state==='RUN'?80:55:actor.eventTarget?45:24)*(this.interior?1.5:1),move=Math.min(distance,speed*delta/1000);
     const x=actor.x+dx/Math.max(distance,.001)*move,y=actor.y+dy/Math.max(distance,.001)*move;
     if(!actor.nav.canWalk(x,y)){actor.route=[];if(job){this.jobs.delete(actor.id);this.runtime.busyWorkers.delete(actor.id);this.runtime.completed.add(job.task);this.runtime.props.current.onTaskError(job.task,'La ruta se detuvo antes de un obstáculo.');}continue;}
-    actor.x=x;actor.y=y;actor.sprite.setFlipX(actor.kind==='cow'?dx>0:dx<0);
-    actor.sprite.setFrame(actor.kind==='cow'?0:actor.kind==='worker'?actor.row*4+1+Math.floor(time/160)%2:1+Math.floor(time/160)%2);
+    actor.x=x;actor.y=y;actor.sprite.setFlipX(actor.kind==='cow'||actor.kind==='dog'?dx>0:dx<0);
+    actor.sprite.setFrame(actor.kind==='cow'?0:actor.kind==='worker'||actor.kind==='dog'?actor.row*4+1+Math.floor(time/160)%2:1+Math.floor(time/160)%2);
     actor.sprite.setPosition(x,y-Math.abs(Math.sin(time/100))*(actor.kind==='cow'?.4:.8)).setDepth(y);
     actor.shadow.setPosition(x,y).setDepth(y-.1);
     if(distance<=move+.2)actor.route.shift();
    }else if(job){
-    job.phase='action';job.until=time+taskRoutes[job.task].duration;job.effect=this.taskEffect(job);
+    actor.state='WORK';job.phase='action';job.until=time+taskRoutes[job.task].duration;job.effect=this.taskEffect(job);
    }else{
-    actor.sprite.setPosition(actor.x,actor.y+Math.sin(time/(actor.kind==='cow'?1100:650))*.3).setFrame(actor.kind==='cow'?(Math.floor(time/7000)%2):actor.kind==='worker'?actor.row*4:actor.sleeping?3:Math.floor(time/2900)%3===0?3:0);
-    if(time>actor.nextPatrol&&!actor.sleeping&&actor.patrol.length){const target=actor.patrol[actor.step++%actor.patrol.length];actor.route=actor.nav.path([actor.x,actor.y],target);actor.nextPatrol=time+3000+(actor.step%4)*1400;}
+    if(actor.eventTarget){actor.state=actor.kind==='worker'?'CELEBRATE':actor.kind==='chick'?actor.variant===6?'LOOK_UP':'DANCE':'SIT';}else if(actor.kind==='chick')actor.state=actor.variant===5?'DANCE':actor.variant===6?'LOOK_UP':'IDLE';
+    if(actor.kind==='worker'&&!actor.eventTarget)actor.state=actor.step%3===0?'WORK':actor.step%3===1?'OBSERVE':'IDLE';
+    if(actor.kind==='dog'&&!actor.eventTarget)actor.state=(['IDLE','SIT','SLEEP','OBSERVE'][actor.step%4] as Actor['state']);
+    actor.sprite.setPosition(actor.x,actor.y+Math.sin(time/(actor.kind==='cow'?1100:650))*.3).setFrame(actor.kind==='cow'?(Math.floor(time/7000)%2):actor.kind==='worker'?actor.row*4+(actor.state==='WORK'?3:0):actor.kind==='dog'?actor.row*4+(['SIT','SLEEP'].includes(actor.state)?3:0):actor.sleeping?3:Math.floor(time/2900)%3===0?3:0);
+    if(time>actor.nextPatrol&&!actor.sleeping&&!actor.eventTarget&&actor.patrol.length){let target=actor.patrol[actor.step++%actor.patrol.length];if(actor.kind==='dog'&&actor.step%3===0){const human=this.actors.filter(a=>a.kind===((actor.step%6===0)?'chick':'worker'))[Math.floor(actor.step/3)%3];if(human){const near:Point=[human.x+(actor.row?-18:18),human.y+(actor.row?18:12)];if(actor.nav.canWalk(...near))target=near;actor.state='FOLLOW';}}else if(actor.kind==='dog')actor.state=actor.step%2?'RUN':'WALK';actor.route=actor.nav.path([actor.x,actor.y],target);if(actor.kind!=='dog')actor.state=actor.step%3?'OBSERVE':'IDLE';actor.nextPatrol=time+4500+(actor.step%4)*1800;}
    }
+   if((actor.eventTarget||actor.state==='DANCE')&&!actor.route.length){actor.sprite.y-=actor.kind==='dog'?0:Math.max(0,Math.sin(time/140+actor.row))*3;actor.sprite.setFrame(actor.kind==='dog'?actor.row*4+3:actor.kind==='worker'?actor.row*4+3:actor.variant===4?0:3);}
+   actor.accessory?.setPosition(actor.x,actor.sprite.y).setDepth(actor.y+.2).setVisible(actor.sprite.visible);
    actor.sprite.setVisible(this.cameras.main.worldView.contains(actor.x,actor.y)||!this.scene.isVisible());
   }
  }

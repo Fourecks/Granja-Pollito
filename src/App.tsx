@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { ArrowUpRight, ClipboardList, Egg, House, Info, Leaf, Milk, Minus, Plus, Sparkles, X } from 'lucide-react';
 const Scene = lazy(() => import('./Scene'));
+import { CELEBRATION_MODE, celebrationMessages, celebrationEntities } from './data/celebration';
 import { workers, taskRoutes } from './data/routes';
 import { interiors } from './data/interiors';
 import type { InteriorId } from './data/world';
@@ -18,6 +19,7 @@ export default function App() {
   const [report, setReport] = useState<string[]>([]);
   const [workingIds, setWorkingIds] = useState<TaskId[]>([]);
   const [location, setLocation] = useState<InteriorId | null>(null);
+  const [celebrationPhase,setCelebrationPhase]=useState('idle');
   const [notice, setNotice] = useState('');
   const [dialogueTurn, setDialogueTurn] = useState<Record<string, number>>({});
   const zoomBy = (delta: number) => window.dispatchEvent(new CustomEvent('farm-zoom', { detail: delta }));
@@ -56,8 +58,13 @@ export default function App() {
   }, []);
   useEffect(() => { if (!notice) return; const timer = window.setTimeout(() => setNotice(''), 6000); return () => window.clearTimeout(timer); }, [notice]);
 
+  useEffect(()=>{const request=()=>setSelected('surprise-launcher');const status=(event:Event)=>setCelebrationPhase((event as CustomEvent<string>).detail);window.addEventListener('farm-surprise-request',request);window.addEventListener('farm-celebration-status',status);return()=>{window.removeEventListener('farm-surprise-request',request);window.removeEventListener('farm-celebration-status',status);};},[]);
   const start = () => { setEntered(true); setState(current => ({ ...current, introSeen: true, lastSeen: Date.now() })); };
   const choose = (id: string) => setSelected(id || null);
+  const activeDecoration=celebrationEntities.find(e=>e.id===selected);
+  const activeMessage=celebrationMessages.find(m=>m.id===selected);
+  const petName=selected==='chispa'?'Chispa':selected==='nube-dog'?'Nube':null;
+  const startSurprise=()=>{setSelected(null);window.dispatchEvent(new Event('farm-surprise'));};
   const activeObject = objects.find(item => item.id === selected);
   const activeCharacter = characters.find(item => item.id === selected);
   const activeWorker = workers.find(worker => worker.id === selected);
@@ -75,6 +82,7 @@ export default function App() {
       <div className="map-hint"><span className="mouse-icon">⌖</span> Arrastra para explorar <span className="hint-separator">·</span> rueda para acercar</div>
       <div className="zoom-controls"><button onClick={() => zoomBy(-100)} aria-label="Acercar"><Plus size={17}/></button><button onClick={() => zoomBy(100)} aria-label="Alejar"><Minus size={17}/></button></div>
       {location && <div className="room-heading"><span>{interiors[location].title}</span><button className="secondary-button" onClick={() => { setSelected(null); window.dispatchEvent(new Event('farm-exit')); }}>← Salir al exterior</button></div>}
+      {CELEBRATION_MODE&&!location&&entered&&<button className="surprise-button" onClick={startSurprise} disabled={celebrationPhase!=='idle'}>{celebrationPhase==='idle'?'🎆 Iniciar sorpresa':celebrationPhase==='gathering'?'🐥 Todos vienen a la plaza…':'✨ Celebramos contigo'}</button>}
       {notice && <div className="toast"><Sparkles size={15}/>{notice}</div>}
     </section>
     <footer className="bottom-bar">
@@ -90,11 +98,12 @@ export default function App() {
       <button className="close-button" onClick={() => setSelected(null)} aria-label="Cerrar"><X size={17}/></button>
       <div className="panel-icon">{objectGlyph[selected] ?? '✿'}</div>
       <p className="eyebrow">{activeCharacter ? activeCharacter.role : activeWorker ? activeWorker.role : activeObject?.type === 'building' ? 'RINCÓN DE LA GRANJA' : activeObject?.type === 'plot' ? 'HUERTO' : 'UN MENSAJE PARA TI'}</p>
-      <h2>{activeCharacter?.name ?? activeWorker?.name ?? activeObject?.title ?? (selected === 'well' ? 'Pozo de agua' : 'Un rincón especial')}</h2>
-      <p className="panel-description">{activeCharacter ? `“${characterLine}”` : activeWorker ? `${activeWorker.name} se ocupa de ${activeWorker.role.toLowerCase()}. Las tareas se completan al terminar su recorrido y trabajo.` : activeObject?.message ?? 'Un pequeño detalle que hace más bonita la granja.'}</p>
+      <h2>{activeCharacter?.name ?? activeWorker?.name ?? activeObject?.title ?? petName ?? (activeMessage?'Un mensaje para ti':selected==='surprise-launcher'?'Una sorpresa en la plaza':selected === 'well' ? 'Pozo de agua' : 'Un rincón especial')}</h2>
+      <p className="panel-description">{activeCharacter ? `“${characterLine}”` : activeWorker ? `${activeWorker.name} se ocupa de ${activeWorker.role.toLowerCase()}. Las tareas se completan al terminar su recorrido y trabajo.` : activeMessage?.text ?? (petName?'Un paseo, una siesta y un poquito de compañía.':selected==='surprise-launcher'?'Reunamos a la granja para celebrar a Pollito.':activeObject?.message ?? (activeDecoration?.id==='cake-table'?'Un pastel preparado con cariño para Pollito.':activeDecoration?.id==='ldc-tools'?'Pequeños recuerdos del esfuerzo y trabajo en equipo.':activeDecoration?.id==='gifts'?'La granja celebra contigo.':activeDecoration?.interaction?.text)) ?? 'Un pequeño detalle que hace más bonita la granja.'}</p>
       {activeObject?.type === 'building' && <button className="primary-button enter-building" onClick={() => { setSelected(null); window.dispatchEvent(new CustomEvent('farm-enter', { detail: activeObject.id })); }}>Entrar <ArrowUpRight size={16}/></button>}
       {activeObject?.taskIds && <div className="panel-tasks">{activeObject.taskIds.map(id => <TaskRow key={id} id={id} state={state} onRun={runTask} onAssign={assign} disabled={workingIds.includes(id)}/>)}</div>}
       {activeCharacter && <button className="secondary-button" onClick={() => { setNotice(characterLine); setDialogueTurn(current => ({ ...current, [activeCharacter.id]: (current[activeCharacter.id] ?? 0) + 1 })); }}>Hablar un poquito <ArrowUpRight size={15}/></button>}
+      {selected==='surprise-launcher'&&<button className="primary-button" onClick={startSurprise} disabled={celebrationPhase!=='idle'}>🎆 Iniciar sorpresa</button>}
       {selected === 'well' && <span className="quiet-note">Agua fresca, cortesía de la granja.</span>}
     </div>}
 

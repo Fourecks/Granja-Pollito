@@ -26,14 +26,14 @@ export const taskCopy: Record<TaskId, { title: string; place: string; actor: str
 };
 
 const helperNames: Record<string, string> = {
-  alma: 'Alma', bruno: 'Bruno', vera: 'Vera', pio: 'Pío', lola: 'Lola', margarita: 'Margarita', canela: 'Canela', nube: 'Nube',
+  minnie: 'Minnie', pollito: 'Pollito', kiara: 'Kiara', pio: 'Pío', lola: 'Lola', margarita: 'Margarita', canela: 'Canela', nube: 'Nube',
   miel: 'Miel', copito: 'Copito', sol: 'Sol', pipa: 'Pipa',
 };
 
 export function runOfflineProgress(state: FarmState, now = Date.now()): { state: FarmState; report: OfflineReport } {
   const elapsedMs = Math.max(0, now - state.lastSeen);
   const cycles = Math.min(8, Math.floor(elapsedMs / (60 * 60 * 1000)));
-  const next = structuredClone(state);
+  const next = migrateWorkerNames(state);
   const lines: string[] = [];
   const enabled = Object.values(next.tasks).filter(task => task.assignedTo);
   if (cycles > 0 && enabled.length) {
@@ -60,4 +60,10 @@ export function performTask(state: FarmState, id: TaskId, now = Date.now()): Far
   if (id === 'collect-milk') next.milk += taskCopy[id].quantity ?? 0;
   if (id === 'water-crops') next.cropsWatered = true;
   return next;
+}
+
+export function migrateWorkerNames(state:FarmState):FarmState {
+ const next=structuredClone(state);const ids:Record<string,string>={alma:'minnie',bruno:'pollito',vera:'kiara'};
+ for(const task of Object.values(next.tasks))if(task.assignedTo&&ids[task.assignedTo])task.assignedTo=ids[task.assignedTo];
+ return next;
 }
