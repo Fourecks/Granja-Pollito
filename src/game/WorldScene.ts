@@ -24,7 +24,7 @@ export abstract class WorldScene extends Phaser.Scene {
   const actor:Actor={id,kind,row,x:initial[0],y:initial[1],home:initial,patrol,route:[],step:0,sprite,shadow,nav,nextPatrol:1000+this.actors.length*370,sleeping,state:sleeping?'SLEEP':'IDLE'};this.actors.push(actor);return actor;
  }
  isBusy(id:string){return this.runtime.busyWorkers.has(id);}
- protected addDogs(){this.actor('chispa','dog',[718,439],globalDestinations,this.nav,0);this.actor('nube-dog','dog',[848,448],[...globalDestinations].reverse(),this.nav,1);}
+ protected addDogs(){const dogs=[this.actor('chispa','dog',[718,439],globalDestinations,this.nav,0),this.actor('nube-dog','dog',[848,448],[...globalDestinations].reverse(),this.nav,1)];dogs.forEach(dog=>dog.accessory=this.add.graphics());}
  protected addWorkers(points?:Point[]){workers.forEach((worker,i)=>this.actor(worker.id,'worker',points?.[i]??worker.home,points?[[points[i][0]+35,points[i][1]],[points[i][0]-25,points[i][1]+25]]:worker.path,this.nav,worker.row));}
  update(time:number,elapsed:number){
   const delta=Math.min(elapsed,80);this.controls?.update(delta);
@@ -62,7 +62,7 @@ export abstract class WorldScene extends Phaser.Scene {
     const x=actor.x+dx/Math.max(distance,.001)*move,y=actor.y+dy/Math.max(distance,.001)*move;
     if(!actor.nav.canWalk(x,y)){actor.route=[];if(job){this.jobs.delete(actor.id);this.runtime.busyWorkers.delete(actor.id);this.runtime.completed.add(job.task);this.runtime.props.current.onTaskError(job.task,'La ruta se detuvo antes de un obstáculo.');}continue;}
     actor.x=x;actor.y=y;actor.sprite.setFlipX(actor.kind==='cow'||actor.kind==='dog'?dx>0:dx<0);
-    actor.sprite.setFrame(actor.kind==='cow'?0:actor.kind==='worker'||actor.kind==='dog'?actor.row*4+1+Math.floor(time/160)%2:1+Math.floor(time/160)%2);
+    actor.sprite.setFrame(actor.kind==='cow'?0:actor.kind==='worker'||actor.kind==='dog'?actor.row*4+1+Math.floor(time/(actor.state==='RUN'?95:160))%2:1+Math.floor(time/(actor.state==='RUN'?95:160))%2);
     actor.sprite.setPosition(x,y-Math.abs(Math.sin(time/100))*(actor.kind==='cow'?.4:.8)).setDepth(y);
     actor.shadow.setPosition(x,y).setDepth(y-.1);
     if(distance<=move+.2)actor.route.shift();
@@ -76,6 +76,7 @@ export abstract class WorldScene extends Phaser.Scene {
     if(time>actor.nextPatrol&&!actor.sleeping&&!actor.eventTarget&&actor.patrol.length){let target=actor.patrol[actor.step++%actor.patrol.length];if(actor.kind==='dog'&&actor.step%3===0){const human=this.actors.filter(a=>a.kind===((actor.step%6===0)?'chick':'worker'))[Math.floor(actor.step/3)%3];if(human){const near:Point=[human.x+(actor.row?-18:18),human.y+(actor.row?18:12)];if(actor.nav.canWalk(...near))target=near;actor.state='FOLLOW';}}else if(actor.kind==='dog')actor.state=actor.step%2?'RUN':'WALK';actor.route=actor.nav.path([actor.x,actor.y],target);if(actor.kind!=='dog')actor.state=actor.step%3?'OBSERVE':'IDLE';actor.nextPatrol=time+4500+(actor.step%4)*1800;}
    }
    if((actor.eventTarget||actor.state==='DANCE')&&!actor.route.length){actor.sprite.y-=actor.kind==='dog'?0:Math.max(0,Math.sin(time/140+actor.row))*3;actor.sprite.setFrame(actor.kind==='dog'?actor.row*4+3:actor.kind==='worker'?actor.row*4+3:actor.variant===4?0:3);}
+   if(actor.kind==='dog'&&actor.accessory){const g=actor.accessory;g.clear();if(actor.state==='SLEEP'){g.lineStyle(1,0xfff4dc,.85);g.beginPath();g.moveTo(7,-29).lineTo(12,-29).lineTo(7,-24).lineTo(12,-24);g.strokePath();}}
    actor.accessory?.setPosition(actor.x,actor.sprite.y).setDepth(actor.y+.2).setVisible(actor.sprite.visible);
    actor.sprite.setVisible(this.cameras.main.worldView.contains(actor.x,actor.y)||!this.scene.isVisible());
   }

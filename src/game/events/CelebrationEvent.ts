@@ -30,7 +30,7 @@ export class CelebrationEvent {
   }
   if(this.phase==='show'){
    this.fireworks.update(delta);this.lights.clear();for(const [x,y] of [[675,365],[945,366],[805,300],[695,320],[908,317]]){this.lights.fillStyle(0xffcf70,.07+Math.sin(time/150)*.01).fillCircle(x,y,38);this.lights.fillStyle(0xffdfa1,.2).fillCircle(x,y,10);}
-   if(this.fireworks.textForming&&!this.cinematic){this.cinematic=true;this.scene.tweens.add({targets:this.sky,alpha:1,duration:1000});const camera=this.scene.cameras.main;this.cameraSaved={x:camera.midPoint.x,y:camera.midPoint.y,zoom:camera.zoom};camera.pan(805,320,1400,'Sine.easeInOut');camera.zoomTo(Math.min(camera.zoom*.9,this.scene.scale.width/520),1400,'Sine.easeInOut');}
+   if(this.fireworks.textForming&&!this.cinematic){this.cinematic=true;this.scene.tweens.add({targets:this.sky,alpha:1,duration:1000});const camera=this.scene.cameras.main;this.cameraSaved={x:camera.midPoint.x,y:camera.midPoint.y,zoom:camera.zoom};camera.pan(805,320,1400,'Sine.easeInOut');camera.zoomTo(Math.max(Math.max(this.scene.scale.width/1672,this.scene.scale.height/940),Math.min(camera.zoom*.9,this.scene.scale.width/520)),1400,'Sine.easeInOut');}
    if(this.fireworks.finished){this.status('restoring');this.fireworks.clear();this.scene.tweens.add({targets:this.sky,alpha:0,duration:1400});this.scene.tweens.add({targets:this.dim,fillAlpha:0,duration:1600});if(this.cameraSaved){const c=this.scene.cameras.main;c.pan(this.cameraSaved.x,this.cameraSaved.y,1400,'Sine.easeInOut');c.zoomTo(this.cameraSaved.zoom,1400,'Sine.easeInOut');}this.scene.time.delayedCall(1700,()=>this.finish());}
   }
  }
