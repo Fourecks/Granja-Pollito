@@ -26,7 +26,7 @@ export const taskCopy: Record<TaskId, { title: string; place: string; actor: str
 };
 
 const helperNames: Record<string, string> = {
-  pio: 'Pío', lola: 'Lola', margarita: 'Margarita', canela: 'Canela', nube: 'Nube',
+  alma: 'Alma', bruno: 'Bruno', vera: 'Vera', pio: 'Pío', lola: 'Lola', margarita: 'Margarita', canela: 'Canela', nube: 'Nube',
   miel: 'Miel', copito: 'Copito', sol: 'Sol', pipa: 'Pipa',
 };
 

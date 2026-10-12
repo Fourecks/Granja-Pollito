@@ -1,50 +1,57 @@
 # Granja Pollito 🐥
 
-Una granja pixel art tranquila para La Jefa. Explora el mundo con arrastre, observa a los pollitos recorrer sus zonas e interactúa con edificios y rincones sin salir del mapa.
+Un pequeño mundo 2D de pixel art para La Jefa. El exterior reproduce la composición del concepto aportado para el proyecto: corral, casa, establo, plaza, caminos, huerta, invernadero y río con puente. React mantiene tareas, recursos, responsables y persistencia; Phaser dibuja y anima los habitantes, cultivos y agua.
 
-## Ejecutar y verificar
+## Ejecutar
 
 ```sh
 npm ci
 npm run dev
-```
-
-```sh
 npm run typecheck
+npm test
 npm run build
-npm run preview
 ```
 
-El renderer es Phaser 4.2.1, configurado para pixel art con escalado nítido. React mantiene los paneles, tareas y el estado; Phaser dibuja y anima el mundo en un canvas. La cámara se arrastra con mouse o dedo y se acerca con la rueda, gesto de zoom con dos dedos o controles.
+`npm test` comprueba rutas de todos los trabajadores a las seis tareas y su regreso, posiciones y recorridos de los habitantes, destinos interiores, puente, obstáculos, corrales, contadores y progreso offline. Revisa todos los puntos de recorrido para impedir agua sin puente. No sustituye la revisión visual en navegador.
 
-## Personalizar el mapa
+## Escenas y arquitectura
 
-- `src/data/world.ts` define edificios, objetos interactivos y decoraciones estáticas. Cambia sus `x` y `y` para moverlos, o añade una fila a `mapDecorations` para incorporar un banco, flor, cerca, caja, tronco, cartel, pozo, puente o grupo de rocas. El origen es la esquina superior izquierda del mapa (`2600 × 1900`).
-- `src/data/farm.ts` define habitantes, roles, estado inicial, posiciones, rutas, sprites, tareas de responsabilidad y diálogos. Para agregar un pollito, añade un registro a `characters` con un `id`, `name`, `role`, `position`, `path`, `zone`, `sprite`, `spriteFrame`, `animations` y `dialogues`.
-- `src/Scene.tsx` precarga sprites, crea el canvas Phaser y conecta las entradas táctiles/de mouse. Para un nuevo tipo de decoración, añade el tipo a `MapDecoration`, su textura a `makePixelAssets` y la correspondencia a `decorationTexture`.
-- Para añadir un edificio, coloca su PNG en `public/assets/`, precárgalo en `preload`, agrega una entrada en `worldBuildings` con `id`, `sprite`, `x`, `y` y `scale`, y declara su panel y zona táctil en `objects` y `worldObjects`.
-- Para añadir otro cartel, incorpora su tipo a `MapDecoration` y su textura a `decorationTexture`; después agrega la fila de posición en `mapDecorations` y el mensaje/zona interactiva en `objects` y `worldObjects`.
-- Para un mensaje secreto, agrega una decoración interactiva con su propia posición e ID en `worldObjects`, y añade un registro `decoration` con título y mensaje en `objects`. El panel React presenta el texto al tocarlo.
-- Para ampliar el mundo, aumenta `MAP.width` y `MAP.height` en `src/Scene.tsx`, ajusta los límites de cámara y extiende `mapDecorations` y los puntos de ruta en `src/data/farm.ts`.
+- `src/Scene.tsx`: puente React/Phaser, runtime compartido y pantalla de carga. Se importa con React.lazy.
+- `src/game/ExteriorScene.ts`: exterior, entradas, capas de oclusión, agua animada y cultivos.
+- `src/game/InteriorScene.ts`: escenas independientes para casa, gallinero, establo e invernadero. El módulo y el fondo de cada interior se cargan al entrar por primera vez.
+- `src/game/WorldScene.ts`: habitantes, animación, cola de trabajos y ejecución de acciones.
+- `src/game/navigation.ts`: polígonos y A* sobre una cuadrícula invisible de 8 píxeles. Los movimientos y segmentos se validan también contra los polígonos; el agua solo admite el puente definido.
+- `src/game/camera.ts`: arrastre, inercia, rueda, controles y pinch. El exterior permanece vivo y conserva su cámara al entrar/salir.
+- `src/game/assets.ts`: precarga inicial y recorte de frames de los atlases originales.
 
-Los elementos visuales estáticos viven en el código; Supabase guarda únicamente el estado dinámico. Agregar una nueva tarea funcional requiere además extender `TaskId`, `taskCopy`, `DEFAULT_STATE` y `performTask` en `src/domain.ts`.
+El fondo integra edificios, vegetación y props en una composición única. Las capas de cercas y árboles se recortan con máscaras desde el propio fondo y se ordenan por su base; habitantes, sombras, cultivos y efectos de tareas son objetos Phaser separados. Los obstáculos evitan que las rutas atraviesen edificios, cercas, árboles, rocas, agua o los cultivos. Las zonas transitables son explícitas y conservadoras.
 
-## Estado, offline y Supabase
+## Datos y personalización
 
-La lógica de tareas, responsables, recursos y progreso offline está en `src/domain.ts`. `lastSeen` determina el tiempo de ausencia y el informe al volver. `src/repository.ts` conserva el repositorio Supabase existente con respaldo local en `localStorage`.
+`src/data/world.ts` contiene dimensiones, polígonos walkable/non-walkable, agua, puente, edificios, puertas, hotspots y máscaras de profundidad. Las coordenadas se expresan en el mapa de 1672 × 940. Cambia posiciones y polígonos junto con el arte cuando recompongas el mapa.
 
-Copia `.env.example` a `.env.local` para configurar `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` con la clave publishable/anon. Habilita Anonymous Sign-Ins y aplica la migración `supabase/migrations/20261011000000_create_farm_state.sql`. Nunca incluyas una clave `service_role` en el cliente. Sin variables, el progreso solo queda guardado en este navegador.
+`src/data/farm.ts` contiene pollitos con nombre, Margarita, diálogos, posiciones y patrullas. Agrega un registro a `characters`; los pollitos del corral usan su cuadrícula restringida y Miel utiliza la ruta del puente. Hay cuatro pollitos ambientales adicionales y otra vaca en `ExteriorScene`. Los animales no ejecutan físicamente los trabajos humanos, pero se conservan sus asignaciones anteriores como responsables de la granja.
 
-## Estructura
+`src/data/routes.ts` define los tres trabajadores (Alma, Bruno y Vera), su posición, patrulla, especialidad y destinos de cada tarea, tanto exteriores como interiores. Se pueden asignar a cualquiera de las tareas. Si un trabajador está ocupado, la siguiente tarea espera; los otros trabajadores y la interfaz continúan activos. Una misma tarea no puede iniciarse dos veces. La secuencia es caminar → actuar → completar y actualizar recursos → regresar. `performTask` se llama al finalizar la acción, no mediante un temporizador global independiente del recorrido. El ordeño coloca a Vera junto a Margarita, usa el frame arrodillado y muestra un cubo con leche.
 
-- `src/Scene.tsx`: renderer Phaser, texturas pixel, cámara, entidades y animaciones.
-- `src/data/world.ts`: posiciones del mapa, zonas interactivas y decoraciones.
-- `src/data/farm.ts`: habitantes, roles, asignaciones, rutas, diálogos y textos de interacción.
-- `src/domain.ts`: tareas, recursos y progreso offline.
-- `src/repository.ts`: almacenamiento local y sincronización Supabase.
-- `src/App.tsx` y `src/styles.css`: HUD, paneles y diseño responsive.
-- `public/assets/`: terreno original, edificios, Margarita, spritesheet de pollitos y tileset de cultivos; fuentes y licencias en `ASSET_LICENSES.md`.
+`src/data/interiors.ts` define fondos, títulos, suelo y muebles sólidos de cada habitación. La puerta del exterior y el botón Entrar abren una escena de juego con fade. La puerta interior y Salir regresan al exterior sin recargar. Los trabajos ya iniciados continúan aunque cambies de habitación.
 
-## Render
+Para nuevos mensajes, carteles o secretos, añade un objeto en `worldObjects` y su texto en `objects` de `farm.ts`. Para nuevos edificios, añade arte, puerta y hotspots, sus obstáculos y el interior correspondiente. Para ampliar el mapa, actualiza `MAP`, su imagen, límites, zonas y rutas. Ejecuta `npm test` al modificar obstáculos o destinos.
 
-`render.yaml` mantiene el sitio estático existente: `npm ci && npm run build`, publicación de `dist` y reescritura SPA hacia `index.html`. Las variables Supabase se configuran desde el servicio existente de Render si se quiere habilitar sincronización en la nube.
+## Agua y cultivos
+
+El río utiliza ocho fases de ondas/reflejos pixelados dibujados en Phaser, limitados a los polígonos de agua y excluyendo el puente. La cascada incluye destellos verticales. No hay un efecto CSS sobre el agua.
+
+El atlas de cultivos tiene cuatro etapas (semilla, brote, planta joven, madura) para zanahorias, coles y tomates. Las parcelas mezclan cultivos maduros y jóvenes; los huecos sembrados avanzan tras el riego a lo largo de 40 minutos. La humedad y pequeños reflejos muestran `cropsWatered`. La fase depende del tiempo del último riego persistido; no agrega economía ni cosechas nuevas.
+
+## Persistencia y Supabase
+
+`src/domain.ts` conserva tareas, recursos, responsables y cálculo de progreso offline; añade los nombres de los trabajadores al reporte. `src/repository.ts` mantiene la integración existente con Supabase y su respaldo local. La migración y el esquema no cambian. Configura `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` desde `.env.local` o el servicio de Render. Sin ambas variables se usa localStorage. No coloques una clave service_role en el navegador.
+
+El trabajo visual en curso es transitorio: al recargar, la tarea conserva su estado persistido y el progreso offline sigue sus reglas anteriores.
+
+## Assets y publicación
+
+Los recursos de esta pasada son originales, generados para el proyecto a partir del concepto aportado. Fuentes y procedencia en `ASSET_LICENSES.md`. Los fondos WebP reducen el peso y los interiores se cargan bajo demanda; los personajes y cultivos usan atlases PNG transparentes. Phaser se carga como chunk separado y sigue superando 500 KB por sí mismo; la aplicación principal y las escenas quedan separadas.
+
+Repositorio existente: Fourecks/Granja-Pollito. Render mantiene `npm ci && npm run build`, publica `dist` y sirve la SPA. URL: https://granja-pollito.onrender.com/.

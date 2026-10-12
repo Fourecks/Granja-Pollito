@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { ArrowUpRight, ClipboardList, Egg, House, Info, Leaf, Milk, Minus, Plus, Sparkles, X } from 'lucide-react';
-import Scene from './Scene';
+const Scene = lazy(() => import('./Scene'));
+import { workers, taskRoutes } from './data/routes';
+import { interiors } from './data/interiors';
+import type { InteriorId } from './data/world';
 import { characters, objects } from './data/farm';
 import { DEFAULT_STATE, performTask, runOfflineProgress, taskCopy, type FarmState, type TaskId } from './domain';
 import { farmRepository } from './repository';
@@ -13,7 +16,8 @@ export default function App() {
   const [entered, setEntered] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [report, setReport] = useState<string[]>([]);
-  const [workingId, setWorkingId] = useState<TaskId | null>(null);
+  const [workingIds, setWorkingIds] = useState<TaskId[]>([]);
+  const [location, setLocation] = useState<InteriorId | null>(null);
   const [notice, setNotice] = useState('');
   const [dialogueTurn, setDialogueTurn] = useState<Record<string, number>>({});
   const zoomBy = (delta: number) => window.dispatchEvent(new CustomEvent('farm-zoom', { detail: delta }));
@@ -37,23 +41,26 @@ export default function App() {
   }, [ready, entered]);
 
   const runTask = useCallback((id: TaskId) => {
-    if (workingId || state.tasks[id].status === 'done') return;
-    setWorkingId(id);
-    const helper = characters.find(character => character.id === state.tasks[id].assignedTo)?.name;
-    setNotice(`${helper ?? 'La Jefa'} va en camino…`);
-    window.setTimeout(() => {
-      setState(current => ({ ...performTask(current, id), lastSeen: Date.now() }));
-      setWorkingId(null);
-      setNotice(`${taskCopy[id].title}: listo. Todo bajo control, Jefa.`);
-      window.setTimeout(() => setNotice(''), 2600);
-    }, 1400);
-  }, [state.tasks, workingId]);
+    if (workingIds.includes(id) || state.tasks[id].status === 'done') return;
+    setWorkingIds(current => [...current, id]);
+    const worker = workers.find(w => w.id === state.tasks[id].assignedTo) ?? workers.find(w => w.id === taskRoutes[id].worker)!;
+    setNotice(`${worker.name} va en camino: ${taskCopy[id].title.toLowerCase()}.`);
+  }, [state.tasks, workingIds]);
+  const completeTask = useCallback((id: TaskId) => {
+    setState(current => ({ ...performTask(current, id), lastSeen: Date.now() }));
+    setWorkingIds(current => current.filter(task => task !== id));
+    setNotice(`${taskCopy[id].title}: listo. Todo bajo control, Jefa.`);
+  }, []);
+  const taskError = useCallback((id: TaskId, message: string) => {
+    setWorkingIds(current => current.filter(task => task !== id)); setNotice(message);
+  }, []);
+  useEffect(() => { if (!notice) return; const timer = window.setTimeout(() => setNotice(''), 6000); return () => window.clearTimeout(timer); }, [notice]);
 
   const start = () => { setEntered(true); setState(current => ({ ...current, introSeen: true, lastSeen: Date.now() })); };
-  const choose = (id: string) => { setSelected(id); if (id === 'pio' && workingId) setNotice('Pío está ocupado con su ronda. ¡Qué profesional!'); };
+  const choose = (id: string) => setSelected(id || null);
   const activeObject = objects.find(item => item.id === selected);
   const activeCharacter = characters.find(item => item.id === selected);
-  const workingCharacter = workingId ? state.tasks[workingId].assignedTo : null;
+  const activeWorker = workers.find(worker => worker.id === selected);
   const characterLine = activeCharacter ? activeCharacter.dialogues[(dialogueTurn[activeCharacter.id] ?? 0) % activeCharacter.dialogues.length] : '';
   const assign = (id: TaskId, value: string) => setState(current => ({ ...current, tasks: { ...current.tasks, [id]: { ...current.tasks[id], assignedTo: value || null, status: value ? current.tasks[id].status : 'ready' } } }));
 
@@ -63,11 +70,11 @@ export default function App() {
       <div className="topbar-right"><span className="owner-chip"><span className="online-dot"/> La Jefa está en casa</span><button className="icon-button" title="Acerca de la granja" onClick={() => setSelected('sign')}><Info size={18}/></button></div>
     </header>
     <section className="farm-wrap" aria-label="Granja Pollito interactiva">
-      <div className="sky-haze haze-one"/><div className="sky-haze haze-two"/>
-      <Scene selected={selected} onSelect={choose} characters={characters} workingCharacter={workingCharacter} workingTask={workingId} onZoom={zoomBy}/>
+
+      <Suspense fallback={<div className="world-loading"><span>🐥</span><small>Preparando Granja Pollito…</small></div>}><Scene selected={selected} onSelect={choose} characters={characters} state={state} activeTasks={workingIds} onTaskComplete={completeTask} onTaskError={taskError} onLocation={setLocation}/></Suspense>
       <div className="map-hint"><span className="mouse-icon">⌖</span> Arrastra para explorar <span className="hint-separator">·</span> rueda para acercar</div>
       <div className="zoom-controls"><button onClick={() => zoomBy(-100)} aria-label="Acercar"><Plus size={17}/></button><button onClick={() => zoomBy(100)} aria-label="Alejar"><Minus size={17}/></button></div>
-      <div className="farm-weather"><span>☀️</span> <div><strong>Un día tranquilo</strong><small>Los pollitos andan de buen humor</small></div></div>
+      {location && <div className="room-heading"><span>{interiors[location].title}</span><button className="secondary-button" onClick={() => { setSelected(null); window.dispatchEvent(new Event('farm-exit')); }}>← Salir al exterior</button></div>}
       {notice && <div className="toast"><Sparkles size={15}/>{notice}</div>}
     </section>
     <footer className="bottom-bar">
@@ -82,19 +89,20 @@ export default function App() {
     {selected && selected !== 'tasks' && <div className="detail-panel">
       <button className="close-button" onClick={() => setSelected(null)} aria-label="Cerrar"><X size={17}/></button>
       <div className="panel-icon">{objectGlyph[selected] ?? '✿'}</div>
-      <p className="eyebrow">{activeCharacter ? activeCharacter.role : activeObject?.type === 'building' ? 'RINCÓN DE LA GRANJA' : activeObject?.type === 'plot' ? 'HUERTO' : 'UN MENSAJE PARA TI'}</p>
-      <h2>{activeCharacter?.name ?? activeObject?.title ?? (selected === 'well' ? 'Pozo de agua' : 'Un rincón especial')}</h2>
-      <p className="panel-description">{activeCharacter ? `“${characterLine}”` : activeObject?.message ?? 'Un pequeño detalle que hace más bonita la granja.'}</p>
-      {activeObject?.taskIds && <div className="panel-tasks">{activeObject.taskIds.map(id => <TaskRow key={id} id={id} state={state} onRun={runTask} onAssign={assign} disabled={!!workingId}/>)}</div>}
+      <p className="eyebrow">{activeCharacter ? activeCharacter.role : activeWorker ? activeWorker.role : activeObject?.type === 'building' ? 'RINCÓN DE LA GRANJA' : activeObject?.type === 'plot' ? 'HUERTO' : 'UN MENSAJE PARA TI'}</p>
+      <h2>{activeCharacter?.name ?? activeWorker?.name ?? activeObject?.title ?? (selected === 'well' ? 'Pozo de agua' : 'Un rincón especial')}</h2>
+      <p className="panel-description">{activeCharacter ? `“${characterLine}”` : activeWorker ? `${activeWorker.name} se ocupa de ${activeWorker.role.toLowerCase()}. Las tareas se completan al terminar su recorrido y trabajo.` : activeObject?.message ?? 'Un pequeño detalle que hace más bonita la granja.'}</p>
+      {activeObject?.type === 'building' && <button className="primary-button enter-building" onClick={() => { setSelected(null); window.dispatchEvent(new CustomEvent('farm-enter', { detail: activeObject.id })); }}>Entrar <ArrowUpRight size={16}/></button>}
+      {activeObject?.taskIds && <div className="panel-tasks">{activeObject.taskIds.map(id => <TaskRow key={id} id={id} state={state} onRun={runTask} onAssign={assign} disabled={workingIds.includes(id)}/>)}</div>}
       {activeCharacter && <button className="secondary-button" onClick={() => { setNotice(characterLine); setDialogueTurn(current => ({ ...current, [activeCharacter.id]: (current[activeCharacter.id] ?? 0) + 1 })); }}>Hablar un poquito <ArrowUpRight size={15}/></button>}
       {selected === 'well' && <span className="quiet-note">Agua fresca, cortesía de la granja.</span>}
     </div>}
 
-    {selected === 'tasks' && <div className="task-drawer"><div className="drawer-heading"><div><p className="eyebrow">EL DÍA A DÍA</p><h2>Cuidados de la granja</h2></div><button className="close-button" onClick={() => setSelected(null)} aria-label="Cerrar"><X size={18}/></button></div><p className="drawer-intro">La Jefa puede encargarse o dejar el trabajo en buenas alas.</p>{Object.keys(state.tasks).map(id => <TaskRow key={id} id={id as TaskId} state={state} onRun={runTask} onAssign={assign} disabled={!!workingId}/>)}<div className="drawer-foot"><House size={15}/> Un paso a la vez. La granja te lo agradece.</div></div>}
+    {selected === 'tasks' && <div className="task-drawer"><div className="drawer-heading"><div><p className="eyebrow">EL DÍA A DÍA</p><h2>Cuidados de la granja</h2></div><button className="close-button" onClick={() => setSelected(null)} aria-label="Cerrar"><X size={18}/></button></div><p className="drawer-intro">La Jefa puede encargarse o dejar el trabajo en buenas alas.</p>{Object.keys(state.tasks).map(id => <TaskRow key={id} id={id as TaskId} state={state} onRun={runTask} onAssign={assign} disabled={workingIds.includes(id as TaskId)}/>)}<div className="drawer-foot"><House size={15}/> Un paso a la vez. La granja te lo agradece.</div></div>}
   </main>;
 }
 
 function TaskRow({ id, state, onRun, onAssign, disabled }: { id: TaskId; state: FarmState; onRun: (id: TaskId) => void; onAssign: (id: TaskId, value: string) => void; disabled: boolean }) {
   const task = state.tasks[id]; const data = taskCopy[id]; const done = task.status === 'done';
-  return <div className={`task-row ${done ? 'task-done' : ''}`}><div className="task-row-copy"><span className="task-check">{done ? '✓' : '·'}</span><div><strong>{data.title}</strong><small>{data.place}{done ? ' · Hecho' : ''}</small></div></div><div className="task-row-actions"><select aria-label={`Encargado: ${data.title}`} value={task.assignedTo ?? ''} onChange={e => onAssign(id, e.target.value)}><option value="">Nadie</option>{characters.map(character => <option key={character.id} value={character.id}>{character.name}</option>)}</select><button className="task-action" disabled={done || disabled} onClick={() => onRun(id)}>{done ? 'Listo' : task.assignedTo ? 'Enviar' : 'Hacer'}</button></div></div>;
+  return <div className={`task-row ${done ? 'task-done' : ''}`}><div className="task-row-copy"><span className="task-check">{done ? '✓' : '·'}</span><div><strong>{data.title}</strong><small>{data.place}{done ? ' · Hecho' : ''}</small></div></div><div className="task-row-actions"><select disabled={disabled} aria-label={`Encargado: ${data.title}`} value={task.assignedTo ?? ''} onChange={e => onAssign(id, e.target.value)}><option value="">Nadie</option>{workers.map(worker => <option key={worker.id} value={worker.id}>{worker.name} · {worker.role}</option>)}{characters.map(character => <option key={character.id} value={character.id}>{character.name}</option>)}</select><button className="task-action" disabled={done || disabled} onClick={() => onRun(id)}>{done ? 'Listo' : disabled ? 'En curso' : task.assignedTo ? 'Enviar' : 'Hacer'}</button></div></div>;
 }
