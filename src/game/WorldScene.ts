@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { NavigationGrid, type Point } from './navigation';
+import { SCALE } from './world/mapConfig';
 import { workers, taskRoutes } from '../data/routes';
 import type { FarmRuntime } from './types';
 import type { TaskId } from '../domain';
@@ -18,7 +19,7 @@ export abstract class WorldScene extends Phaser.Scene {
   const initial=nav.nearest(point),factor=this.interior?2:1;
   const shadow=this.add.ellipse(initial[0],initial[1],(kind==='cow'?49:kind==='worker'?17:13)*factor,(kind==='cow'?13:5)*factor,0x543b26,.28).setDepth(initial[1]-.1);
   const sprite=this.add.sprite(...initial,kind==='cow'?'cows':kind==='dog'?'dogs':'actors',kind==='worker'||kind==='dog'?row*4:0)
-   .setDisplaySize((kind==='cow'?80:kind==='worker'?46:kind==='dog'?37:34)*factor,(kind==='cow'?80:kind==='worker'?46:kind==='dog'?37:34)*factor)
+   .setDisplaySize((kind==='cow'?80:kind==='worker'?SCALE.humanHeight:kind==='dog'?37:34)*factor,(kind==='cow'?80:kind==='worker'?SCALE.humanHeight:kind==='dog'?37:34)*factor)
    .setOrigin(.5,kind==='chick'?.79:kind==='cow'?.82:kind==='dog'?.9:.96).setDepth(initial[1]);
   sprite.setInteractive({useHandCursor:true});sprite.on('pointerup',()=>{if(!this.controls.moved)this.runtime.props.current.onSelect(id);});
   const actor:Actor={id,kind,row,x:initial[0],y:initial[1],home:initial,patrol,route:[],step:0,sprite,shadow,nav,nextPatrol:1000+this.actors.length*370,sleeping,state:sleeping?'SLEEP':'IDLE'};this.actors.push(actor);return actor;

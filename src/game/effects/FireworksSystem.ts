@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
+import type { Point } from '../navigation';
 import { ParticleEngine,fireworkColors,type BurstKind } from './particles';
 import { ParticleTextSystem } from './ParticleTextSystem';
 interface Rocket {x:number;y:number;sx:number;sy:number;tx:number;ty:number;age:number;duration:number;kind:BurstKind;color:number;}
 export class FireworksSystem {
  readonly engine:ParticleEngine;private rockets:Rocket[]=[];private graphics:Phaser.GameObjects.Graphics;private glow:Phaser.GameObjects.Graphics;
  private launchTimer=0;private launched=0;private elapsed=0;private firstText=false;private secondText=false;private finale=false;private mobile:boolean;private slow=0;
- constructor(private scene:Phaser.Scene){this.mobile=scene.scale.width/Math.min(window.devicePixelRatio||1,2)<760;this.engine=new ParticleEngine(this.mobile?650:1600);this.glow=scene.add.graphics().setDepth(4900).setBlendMode(Phaser.BlendModes.ADD);this.graphics=scene.add.graphics().setDepth(4901);}
+ constructor(private scene:Phaser.Scene,offset:Point=[0,0]){this.mobile=scene.scale.width/Math.min(window.devicePixelRatio||1,2)<760;this.engine=new ParticleEngine(this.mobile?650:1600);this.glow=scene.add.graphics().setPosition(...offset).setDepth(4900).setBlendMode(Phaser.BlendModes.ADD);this.graphics=scene.add.graphics().setPosition(...offset).setDepth(4901);}
  start(){this.mobile=this.scene.scale.width/Math.min(window.devicePixelRatio||1,2)<760;this.engine.limit=this.mobile?650:1600;this.slow=0;this.elapsed=0;this.launchTimer=0;this.launched=0;this.firstText=this.secondText=this.finale=false;this.engine.reset();this.rockets=[];}
  update(delta:number){
   const dt=Math.min(delta/1000,.05);this.elapsed+=dt;this.launchTimer-=dt;

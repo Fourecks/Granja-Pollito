@@ -1,3 +1,4 @@
+import { createCowFrames } from './assets';
 import { WorldScene } from './WorldScene';
 import { CameraControls } from './camera';
 import { NavigationGrid, rectangle, type Point } from './navigation';
@@ -7,8 +8,9 @@ import type { FarmRuntime } from './types';
 export class InteriorScene extends WorldScene {
  private id:InteriorId; private leaving=false;
  constructor(runtime:FarmRuntime,id:InteriorId){super(`Interior-${id}`,runtime);this.id=id;this.interior=true;}
- preload(){this.load.image(`room-${this.id}`,interiors[this.id].asset);}
+ preload(){if(!this.textures.exists('cows'))this.load.image('cows','/assets/cows-v2.webp');this.load.image(`room-${this.id}`,interiors[this.id].asset);}
  create(){
+  createCowFrames(this);
   const config=interiors[this.id];this.add.image(0,0,`room-${this.id}`).setOrigin(0).setDisplaySize(1672,941).setDepth(0);
   this.nav=new NavigationGrid({width:1672,height:941,walkable:config.walkable,obstacles:config.obstacles},7);
   const c=this.cameras.main,fit=Math.max(this.scale.width/1672,this.scale.height/941);

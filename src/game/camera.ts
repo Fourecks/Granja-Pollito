@@ -2,9 +2,10 @@ import Phaser from 'phaser';
 export class CameraControls {
  moved=false;
  private dragging=false; private distance=0; private start={x:0,y:0}; private last={x:0,y:0}; private velocity={x:0,y:0};
- constructor(private scene:Phaser.Scene, private minZoom:number, private maxZoom=2.4) {
+ constructor(private scene:Phaser.Scene, private minZoom:number, private maxZoom=2.4, private world={width:1672,height:941}) {
   scene.input.addPointer(1);
-  scene.scale.on(Phaser.Scale.Events.RESIZE,()=>{this.minZoom=Math.max(scene.scale.width/1672,scene.scale.height/941);if(scene.cameras.main.zoom<this.minZoom)scene.cameras.main.setZoom(this.minZoom);});
+  const resize=()=>{this.minZoom=Math.max(scene.scale.width/this.world.width,scene.scale.height/this.world.height);this.maxZoom=Math.max(this.maxZoom,this.minZoom);if(scene.cameras.main.zoom<this.minZoom)scene.cameras.main.setZoom(this.minZoom);};
+  scene.scale.on(Phaser.Scale.Events.RESIZE,resize);scene.events.once('shutdown',()=>scene.scale.off(Phaser.Scale.Events.RESIZE,resize));
   const touches=()=>[scene.input.pointer1,scene.input.pointer2].filter(p=>p.isDown);
   scene.input.on('pointerdown',(p:Phaser.Input.Pointer)=>{
    if(p.button!==0)return;scene.cameras.main.panEffect.reset();scene.cameras.main.zoomEffect.reset();const fingers=touches();this.velocity={x:0,y:0};

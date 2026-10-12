@@ -1,68 +1,43 @@
 import Phaser from 'phaser';
 import { CelebrationEvent } from './events/CelebrationEvent';
+import { CELEBRATION_MODE } from '../data/celebration';
+import type { InteriorId } from '../data/world';
 import { WorldScene } from './WorldScene';
 import { CameraControls } from './camera';
-import { createFrames, loadExteriorAssets } from './assets';
-import { NavigationGrid, inside, type Point } from './navigation';
-import { MAP, navigation, cowPen, worldObjects, mapDecorations, waterZones, bridge, type InteriorId } from '../data/world';
-import { CELEBRATION_MODE, celebrationMessages, celebrationHumans, celebrationEntities, globalDestinations, gatheringPoints } from '../data/celebration';
-import { entityCollision, EntitySystem } from './entities';
+import { createFrames } from './assets';
+import { NavigationGrid } from './navigation';
+import { MAP, SCALE } from './world/mapConfig';
+import { navigation } from './world/collisions';
+import { TerrainLayers } from './world/terrain';
+import { WaterLayer } from './world/water';
+import { zoneById, zones } from './world/zones';
 import type { FarmRuntime } from './types';
+// Phase 1: foundations only. Existing humans exercise navigation and keep tasks functional.
 export class ExteriorScene extends WorldScene {
- private celebration?:CelebrationEvent; private water!:Phaser.GameObjects.Graphics; private crops!:Phaser.GameObjects.Graphics; private lastDiagnostic=0; private lastFrame=-1; private lastGrowth=-1; private entering=false; private cropPlants:Array<{sprite:Phaser.GameObjects.Image;row:number;variation:number}>=[];
+ private terrain!:TerrainLayers;private water!:WaterLayer;private diagnosticAt=0;private entering=false;private celebration?:CelebrationEvent;
  constructor(runtime:FarmRuntime){super('Exterior',runtime);}
- preload(){loadExteriorAssets(this);this.load.on('loaderror',(file:Phaser.Loader.File)=>console.error(`No se pudo cargar ${file.key}`));}
+ preload(){this.load.image('actors','/assets/actors-v2.webp');}
  create(){
-  createFrames(this);this.add.image(0,0,'exterior').setOrigin(0).setDisplaySize(MAP.width,MAP.height).setDepth(0);
-  const worldNavigation={...navigation,obstacles:[...navigation.obstacles,...(CELEBRATION_MODE?celebrationEntities.map(entityCollision).filter((p):p is NonNullable<typeof p>=>!!p):[])]};
-  this.nav=new NavigationGrid(worldNavigation,4);
-  const camera=this.cameras.main,fit=Math.max(this.scale.width/MAP.width,this.scale.height/MAP.height);
-  camera.setBounds(0,0,MAP.width,MAP.height).setZoom(this.scale.width/(Math.min(window.devicePixelRatio||1,2))<760?Math.max(fit,.82*Math.min(window.devicePixelRatio||1,2)):fit*1.03);
-  camera.centerOn(this.scale.width/(Math.min(window.devicePixelRatio||1,2))<760?(CELEBRATION_MODE?805:470):MAP.width/2,this.scale.width/(Math.min(window.devicePixelRatio||1,2))<760?390:MAP.height/2);
-  this.controls=new CameraControls(this,fit,2.4*Math.min(window.devicePixelRatio||1,2));
-  const chickNav=new NavigationGrid(worldNavigation,2),cowNav=new NavigationGrid({...navigation,walkable:[cowPen]},7);
-  for(const data of this.runtime.props.current.characters){const p=data.position; if(!p)continue;this.actor(data.id,data.kind==='cow'?'cow':'chick',[p.x,p.y],data.kind==='cow'?data.path??[]:[...globalDestinations].slice(this.actors.length%6).concat([[p.x,p.y]]),data.kind==='cow'?cowNav:data.zone==='estanque'?this.nav:chickNav,0,data.state==='sleeping');}
-  for(const [i,p] of ([[310,355],[350,350],[240,332],[405,352]] as Point[]).entries())this.actor(`ambient-chick-${i}`,'chick',p,[[p[0]+10,p[1]+4],[p[0]-12,p[1]+7]],chickNav);
-  this.actor('blanca','cow',[1235,310],[[1245,311],[1240,303],[1228,312]],cowNav);this.addWorkers();this.addDogs();
-  this.createCrops();this.foregrounds();this.water=this.add.graphics().setDepth(1);this.crops=this.add.graphics().setDepth(1);
-  for(const object of worldObjects){const hit=this.add.rectangle(object.x,object.y,object.hitWidth,object.hitHeight,0xffffff,0).setDepth(object.enter?3000:1800).setInteractive({useHandCursor:true});hit.on('pointerup',()=>{if(this.controls.moved)return;if(object.enter)void this.enter(object.enter);else this.runtime.props.current.onSelect(object.id);});}
-  // Actors stay selectable above generous building hit regions.
-  this.actors.forEach(a=>a.sprite.on('pointerup',()=>{if(!this.controls.moved)this.runtime.props.current.onSelect(a.id);}));
+  createFrames(this,true);
+  this.terrain=new TerrainLayers(this);this.water=new WaterLayer(this,this.terrain.masks);
+  this.nav=new NavigationGrid(navigation,7);
+  const camera=this.cameras.main,fit=Math.max(this.scale.width/MAP.width,this.scale.height/MAP.height),dpr=Math.min(window.devicePixelRatio||1,2);
+  camera.setBounds(0,0,MAP.width,MAP.height).setZoom(this.scale.width/dpr<760?Math.max(fit,.85*dpr):fit).centerOn(...zoneById.centralPlaza.center);
+  this.controls=new CameraControls(this,fit,2.4*dpr,MAP);
+  this.addWorkers();
+  if(CELEBRATION_MODE)this.celebration=new CelebrationEvent(this,MAP,zoneById.centralPlaza.center);
   const enter=(event:Event)=>{if(this.input.enabled)void this.enter((event as CustomEvent<InteriorId>).detail);};
   window.addEventListener('farm-enter',enter);this.events.once('shutdown',()=>window.removeEventListener('farm-enter',enter));
-  if(CELEBRATION_MODE){this.createCelebration();this.celebration=new CelebrationEvent(this);}
+  for(const z of zones.filter(z=>z.legacyObject)){
+   const xs=z.shape.map(p=>p[0]),ys=z.shape.map(p=>p[1]);
+   const hit=this.add.zone(...z.center,Math.max(...xs)-Math.min(...xs),Math.max(...ys)-Math.min(...ys)).setDepth(-9);
+   hit.setInteractive(new Phaser.Geom.Polygon(z.shape.map(([x,y])=>({x:x-Math.min(...xs),y:y-Math.min(...ys)}))),Phaser.Geom.Polygon.Contains);
+   hit.on('pointerup',()=>{if(!this.controls.moved)this.runtime.props.current.onSelect(z.legacyObject!);});
+  }
+  this.game.canvas.dataset.mapVersion='phase-1';this.game.canvas.dataset.mapSize=`${MAP.width}x${MAP.height}`;
+  this.game.canvas.dataset.humanHeight=String(SCALE.humanHeight);
+  this.events.once('shutdown',()=>{this.actors=[];});
   this.runtime.loading(false);camera.fadeIn(350);
- }
- private createCelebration(){
-  const entities=new EntitySystem(this,entity=>{const action=entity.interaction;if(action?.kind==='message'){this.runtime.props.current.onSelect(entity.id);}else if(action?.kind==='launcher'){window.dispatchEvent(new Event('farm-surprise-request'));}else this.runtime.props.current.onSelect(entity.id);},()=>this.controls.moved);
-  for(const entity of celebrationEntities)entities.add(entity);
-  for(const message of celebrationMessages)this.add.text(message.position[0]+message.offset[0],message.position[1]+message.offset[1],message.text,{fontFamily:'Georgia',fontSize:`${message.fontSize}px`,fontStyle:'bold',color:'#51321e',wordWrap:{width:message.width},align:'center',resolution:3}).setOrigin(.5).setDepth(message.position[1]+.1);
-  for(let i=0;i<16;i++){
-   const home=this.nav.nearest(gatheringPoints[(i+4)%gatheringPoints.length]);
-   const a=this.actor(`celebration-chick-${i}`,'chick',home,[gatheringPoints[(i+9)%gatheringPoints.length],home],this.nav);a.variant=i%8;
-   if(i%3===0){a.workerChick=true;a.sprite.setTexture('worker-chicks',0).setDisplaySize(32,32).setOrigin(.5,.94);}
-  }
-  for(const a of this.actors.filter(a=>a.kind==='worker')){
-   const point=celebrationHumans[a.id];if(!point)continue;
-   a.home=point;a.patrol=[point];a.route=a.nav.path([a.x,a.y],point);
-   const name={kiara:'Kiara',minnie:'Minnie',pollito:'Pollito'}[a.id]!;
-   const label=this.add.text(a.x,a.y-43,name,{fontFamily:'monospace',fontSize:'9px',color:'#fff5da',stroke:'#513621',strokeThickness:2,resolution:2}).setOrigin(.5).setDepth(3000).setVisible(false);
-   a.sprite.on('pointerover',()=>{label.setPosition(a.x,a.y-43).setVisible(true);});a.sprite.on('pointerout',()=>label.setVisible(false));
-  }
-
- }
- private createCrops(){
-  for(let bed=0;bed<2;bed++)for(let row=0;row<3;row++)for(let col=0;col<5;col++){
-   const x=(bed?561:455)+col*19-row*17,y=(bed?543:512)+col*4+row*10;
-   const plant=this.add.image(x,y,'crop-stages',bed?7:11).setDisplaySize(bed?31:34,bed?31:38).setOrigin(.5,.91).setDepth(y);
-   this.cropPlants.push({sprite:plant,row:bed?1:col%2?0:2,variation:(row+col)%4});
-  }
- }
- private foregrounds(){
-  const source=this.textures.get('exterior').getSourceImage() as HTMLImageElement;
-  for(const layer of mapDecorations){const xs=layer.polygon.map(p=>p[0]),ys=layer.polygon.map(p=>p[1]);const x=Math.floor(Math.min(...xs)),y=Math.floor(Math.min(...ys)),w=Math.ceil(Math.max(...xs)-x),h=Math.ceil(Math.max(...ys)-y);
-   const texture=this.textures.createCanvas(layer.id,w,h)!;const ctx=texture.context;ctx.imageSmoothingEnabled=false;ctx.beginPath();layer.polygon.forEach((p,i)=>i?ctx.lineTo(p[0]-x,p[1]-y):ctx.moveTo(p[0]-x,p[1]-y));ctx.closePath();ctx.clip();ctx.drawImage(source,-x,-y,MAP.width,MAP.height);texture.refresh();this.add.image(x,y,layer.id).setOrigin(0).setDepth(layer.depth);
-  }
  }
  async enter(id:InteriorId){
   if(this.entering||this.runtime.room)return;this.entering=true;this.runtime.props.current.onSelect('');
@@ -78,17 +53,10 @@ export class ExteriorScene extends WorldScene {
   }catch(error){console.error(error);this.runtime.loading(false);this.entering=false;}
  }
  update(time:number,delta:number){
-  super.update(time,delta);this.celebration?.update(time,delta);
-  if(import.meta.env.DEV&&time-this.lastDiagnostic>500){this.lastDiagnostic=time;this.game.canvas.dataset.stage=this.celebration?.stage??'disabled';this.game.canvas.dataset.world=JSON.stringify({phase:this.celebration?.phase??'disabled',particles:this.celebration?.particles??0,fps:Math.round(this.game.loop.actualFps),actors:this.actors.map(a=>({id:a.id,x:Math.round(a.x),y:Math.round(a.y),state:a.state,route:a.route.length,target:a.eventTarget}))});}
-  const state=this.runtime.props.current.state,elapsed=state.tasks['water-crops'].lastRunAt?Date.now()-state.tasks['water-crops'].lastRunAt!:Infinity;
-  const growth=state.cropsWatered?Math.min(3,1+Math.floor(elapsed/1200000)):0;
-  if(growth!==this.lastGrowth){this.lastGrowth=growth;for(const plant of this.cropPlants)plant.sprite.setFrame(plant.row*4+(plant.variation===3?growth:plant.variation===2?2:3));}
-  if(!this.scene.isVisible())return; // Keep jobs/events running; skip off-screen water drawing.
-  const frame=Math.floor(time/170)%8;if(frame===this.lastFrame||!this.water)return;this.lastFrame=frame;this.water.clear();this.crops.clear();
-  // Eight discrete pixel ripple frames, clipped to authored water polygons. No CSS effects.
-  for(let i=0;i<145;i++){const x=1180+(i*53)%490,y=225+(i*97)%500;if(!waterZones.some(poly=>inside([x,y],poly))||inside([x,y],bridge))continue;
-   this.water.fillStyle(i%3===0?0xc1f2e4:0x72cbdc,.17+((i+frame)%5)*.04);this.water.fillRect(x+(frame+i)%8-4,y,5+(i%4)*3,1+(i%2));}
-  for(let i=0;i<8;i++){this.water.fillStyle(0xe1fff0,.35);this.water.fillRect(1602+i%3*5,162+(i*13+frame*4)%69,2,7);}
-  if(this.runtime.props.current.state.cropsWatered){for(let i=0;i<32;i++){const x=440+(i*37)%240,y=505+(i*11)%72;this.crops.fillStyle(i%2?0xa2e4dc:0x40786c,.24);this.crops.fillRect(x,y,3,2);if((i+frame)%8===0){this.crops.fillStyle(0xdefff3,.6);this.crops.fillRect(x,y-6,1,4);}}}
+  super.update(time,delta);this.celebration?.update(time,delta);if(!this.scene.isVisible())return;
+  this.terrain.cull();this.water.update(time);
+  if(time-this.diagnosticAt>750){this.diagnosticAt=time;const c=this.cameras.main;
+   this.game.canvas.dataset.world=JSON.stringify({version:'phase-1',fps:Math.round(this.game.loop.actualFps),waterFrame:this.water.animationFrame,chunks:this.terrain.objects.length,visibleChunks:this.terrain.objects.filter(o=>o.visible).length,zoom:c.zoom,camera:[Math.round(c.worldView.x),Math.round(c.worldView.y),Math.round(c.worldView.width),Math.round(c.worldView.height)],actors:this.actors.map(a=>({id:a.id,x:Math.round(a.x),y:Math.round(a.y),state:a.state,route:a.route.length,walkable:a.nav.canWalk(a.x,a.y)}))});
+  }
  }
 }

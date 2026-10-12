@@ -1,6 +1,7 @@
+import { zoneById, zones } from '../game/world/zones';
 import { rectangle, type Point } from '../game/navigation';
 import type { WorldEntity } from '../game/entities';
-// Removes the entire temporary celebration, including its footprints and guests.
+// Existing surprise stays available on request; no props or animal guests populate phase 1.
 export const CELEBRATION_MODE = true;
 export const celebrationMessages = [
  {id:'celebration-sign',text:'¡La granja\nestá muy\nfeliz por ti!',position:[690,355] as Point,size:[103,84] as Point,frame:0,offset:[0,-35] as Point,fontSize:9,width:68},
@@ -30,6 +31,9 @@ export const celebrationEntities:WorldEntity[]=[
  {...prop('surprise-launcher',[869,462],14,[30,35],[18,10]),interaction:{kind:'launcher',text:'🎆 Iniciar sorpresa'}},
 ];
 // Preserve clear approaches around the fountain and between all solid props.
-export const gatheringPoints:Point[]=[[710,420],[744,442],[794,450],[839,436],[892,415],[880,389],[840,354],[851,373],[711,387],[920,430],[875,444],[760,439],[820,455],[860,423],[710,370],[906,395],[708,444],[930,418],[822,344],[904,449],[720,423],[850,449],[706,405],[852,386],[844,410],[905,423],[737,454],[802,444],[857,455],[919,458]];
-export const celebrationHumans:Record<string,Point>={kiara:[748,359],pollito:[798,359],minnie:[842,359]};
-export const globalDestinations:Point[]=[[255,349],[455,479],[690,445],[975,625],[1285,312],[1535,508],[205,810],[730,303],[970,470],[1240,547],[600,610],[278,623]];
+const originalGathering:Point[]=[[710,420],[744,442],[794,450],[839,436],[892,415],[880,389],[840,354],[851,373],[711,387],[920,430],[875,444],[760,439],[820,455],[860,423],[710,370],[906,395],[708,444],[930,418],[822,344],[904,449],[720,423],[850,449],[706,405],[852,386],[844,410],[905,423],[737,454],[802,444],[857,455],[919,458]];
+const anchor=zoneById.centralPlaza.center;
+const atPlaza=([x,y]:Point):Point=>[x-805+anchor[0],y-415+anchor[1]];
+export const gatheringPoints=originalGathering.map(atPlaza);
+export const celebrationHumans:Record<string,Point>={kiara:atPlaza([748,359]),pollito:atPlaza([798,359]),minnie:atPlaza([842,359])};
+export const globalDestinations:Point[]=zones.filter(z=>!['horsePaddock','pigPaddock'].includes(z.id)).map(z=>z.center);

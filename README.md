@@ -1,3 +1,5 @@
+> **Mapa actual: reconstrucción del plano maestro, fase 1.** El exterior usa terreno, agua, topografía, parcelas y caminos por capas/chunks. Consulta [la documentación de fase 1](docs/world-phase-1.md) para la arquitectura, escala y pruebas. Los interiores y la sorpresa existentes se conservan; sus edificios y decoraciones no se dibujan en esta fase.
+
 # Granja Pollito 🐥
 
 Un pequeño mundo 2D de pixel art para La Jefa. El exterior reproduce la composición del concepto aportado para el proyecto: corral, casa, establo, plaza, caminos, huerta, invernadero y río con puente. React mantiene tareas, recursos, responsables y persistencia; Phaser dibuja y anima los habitantes, cultivos y agua.

@@ -8,12 +8,13 @@ export function loadExteriorAssets(scene:Phaser.Scene) {
  scene.load.image('cows','/assets/cows-v2.webp');
  scene.load.image('crop-stages','/assets/crop-stages-v2.webp');
 }
-export function createFrames(scene:Phaser.Scene) {
+export function createFrames(scene:Phaser.Scene,actorsOnly=false) {
  const sheet=scene.textures.get('actors'); const source=sheet.getSourceImage() as HTMLImageElement;
  for(let row=0;row<4;row++) for(let col=0;col<4;col++) {
   const x=Math.round(col*source.width/4),y=Math.round(row*source.height/4);
   sheet.add(row*4+col,0,x,y,Math.round((col+1)*source.width/4)-x,Math.round((row+1)*source.height/4)-y);
  }
+ if(actorsOnly)return;
  const crop=scene.textures.get('crop-stages'), cropImage=crop.getSourceImage() as HTMLImageElement;
  for(let row=0;row<3;row++)for(let col=0;col<4;col++){const x=Math.round(col*cropImage.width/4),y=Math.round(row*cropImage.height/3);crop.add(row*4+col,0,x,y,Math.round((col+1)*cropImage.width/4)-x,Math.round((row+1)*cropImage.height/3)-y);}
  for(const key of ['dogs',...(CELEBRATION_MODE?['worker-chicks']:[])]){const texture=scene.textures.get(key),source=texture.getSourceImage() as HTMLImageElement;for(let row=0;row<2;row++)for(let col=0;col<4;col++){const x=Math.round(col*source.width/4),y=Math.round(row*source.height/2);texture.add(row*4+col,0,x,y,Math.round((col+1)*source.width/4)-x,Math.round((row+1)*source.height/2)-y);}}
@@ -25,6 +26,9 @@ export function createFrames(scene:Phaser.Scene) {
  [0,946,455,285],[455,1080,320,160],[775,975,230,260],[1005,960,270,280]];
  const scale=(t.getSourceImage() as HTMLImageElement).width/1280;
  frames.forEach(([x,y,w,h],i)=>t.add(i,0,Math.round(x*scale),Math.round(y*scale),Math.round(w*scale),Math.round(h*scale)));}
+ createCowFrames(scene);
+}
+export function createCowFrames(scene:Phaser.Scene){
  const cows=scene.textures.get('cows'), image=cows.getSourceImage() as HTMLImageElement;
- for(let i=0;i<2;i++) cows.add(i,0,i*image.width/2,0,image.width/2,image.height);
+ for(let i=0;i<2;i++) if(!cows.has(String(i)))cows.add(i,0,i*image.width/2,0,image.width/2,image.height);
 }

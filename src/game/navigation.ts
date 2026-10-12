@@ -10,24 +10,29 @@ export function inside(point: Point, polygon: Polygon): boolean {
   }
   return result;
 }
-export interface NavigationData { width: number; height: number; walkable: Polygon[]; obstacles: Polygon[]; bridges?: Polygon[]; water?:Polygon[]; }
+export interface NavigationData { width: number; height: number; walkable: Polygon[]; obstacles: Polygon[]; bridges?: Polygon[]; water?:Polygon[]; waterIslands?:Polygon[]; passages?:Polygon[]; terrainObstacles?:Polygon[]; swims?:boolean; cell?:number; }
 export class NavigationGrid {
-  readonly cell = 8;
+  readonly cell: number;
   private cols: number;
   private rows: number;
   private cells: Uint8Array;
   private edges=new Map<number,boolean>();
   constructor(readonly data: NavigationData, readonly radius = 3) {
+    this.cell=data.cell??8;
     this.cols = Math.ceil(data.width / this.cell); this.rows = Math.ceil(data.height / this.cell);
     this.cells = new Uint8Array(this.cols * this.rows);
     for (let y = 0; y < this.rows; y++) for (let x = 0; x < this.cols; x++) this.cells[y * this.cols + x] = this.canWalk(...this.center(y * this.cols + x)) ? 1 : 0;
   }
   canWalk(x: number, y: number): boolean {
-    for (const [dx, dy] of [[0, 0], [this.radius, 0], [-this.radius, 0], [0, this.radius], [0, -this.radius]]) {
-      const point: Point = [x + dx, y + dy];
-      if (!this.data.walkable.some(poly => inside(point, poly))) return false;
+    const r=this.radius;
+    for (const [dx, dy] of [[0,0],[r,0],[-r,0],[0,r],[0,-r],[r*.707,r*.707],[-r*.707,r*.707],[r*.707,-r*.707],[-r*.707,-r*.707]]) {
+      const point:Point=[x+dx,y+dy];
+      if(point[0]<0||point[1]<0||point[0]>=this.data.width||point[1]>=this.data.height)return false;
+      const water=this.data.water?.some(poly=>inside(point,poly))&&!this.data.waterIslands?.some(poly=>inside(point,poly));
       const onBridge=this.data.bridges?.some(poly=>inside(point,poly));
-      if(this.data.obstacles.some(poly=>inside(point,poly)&&!(onBridge&&this.data.water?.includes(poly))))return false;
+      if(water&&!onBridge&&!this.data.swims)return false;
+      if(!this.data.walkable.some(poly=>inside(point,poly))&&!(water&&this.data.swims))return false;
+      if(this.data.obstacles.some(poly=>inside(point,poly)&&!(this.data.terrainObstacles?.includes(poly)&&this.data.passages?.some(p=>inside(point,p)))))return false;
     }
     return true;
   }
@@ -35,8 +40,8 @@ export class NavigationGrid {
     // Split at every terrain boundary for each footprint probe. Midpoints prove
     // continuous clearance, including narrow fence corners missed by sampling.
     const dx=b[0]-a[0],dy=b[1]-a[1],cuts=[0,1];
-    for(const [ox,oy] of [[0,0],[this.radius,0],[-this.radius,0],[0,this.radius],[0,-this.radius]]){
-     for(const polygon of [...this.data.walkable,...this.data.obstacles,...(this.data.bridges??[])])for(let i=0;i<polygon.length;i++){
+    for(const [ox,oy] of [[0,0],[this.radius,0],[-this.radius,0],[0,this.radius],[0,-this.radius],[this.radius*.707,this.radius*.707],[-this.radius*.707,this.radius*.707],[this.radius*.707,-this.radius*.707],[-this.radius*.707,-this.radius*.707]]){
+     for(const polygon of [...this.data.walkable,...this.data.obstacles,...(this.data.water??[]),...(this.data.waterIslands??[]),...(this.data.bridges??[]),...(this.data.passages??[])])for(let i=0;i<polygon.length;i++){
       const c=polygon[i],d=polygon[(i+1)%polygon.length],ex=d[0]-c[0],ey=d[1]-c[1],den=dx*ey-dy*ex;if(Math.abs(den)<1e-9)continue;
       const cx=c[0]-a[0]-ox,cy=c[1]-a[1]-oy,t=(cx*ey-cy*ex)/den,u=(cx*dy-cy*dx)/den;
       if(t>0&&t<1&&u>=0&&u<=1)cuts.push(t);
