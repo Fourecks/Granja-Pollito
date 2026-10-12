@@ -45,3 +45,6 @@ Los prompts de producción y el inventario están en `docs/plaza-assets.md`.
 `public/assets/vegetation-atlas.png` y `.json`: generados para Granja Pollito con la herramienta integrada ImageGen a partir del catálogo original proporcionado por el usuario. Incluyen vegetación, rocas/props y sprites ambientales, sin paquetes de arte de terceros. El mapa de referencia no se usa como fondo ni se distribuye en la aplicación. Dirección de arte y prompts: `docs/world-phase-2.md`.
 
 `public/assets/micro-grass-atlas.png` y `.json`: microcésped propio generado con ImageGen usando el atlas de Capa 2 como referencia. Incluye cuatro familias y cuatro poses suaves, con transparencia. Prompt y arquitectura en `docs/world-phase-2.md`.
+
+
+`public/assets/tulip-garden-atlas.png` y `.json`: atlas propio generado con ImageGen desde el catálogo original del jardín proporcionado por el usuario y el atlas de vegetación de Granja Pollito. Tulipanes y props coherentes, sin paquetes de terceros. Prompt y organización en `docs/world-phase-25.md`.

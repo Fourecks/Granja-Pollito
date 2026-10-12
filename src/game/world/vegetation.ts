@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { MAP } from './mapConfig';
 import type { WorldMasks } from './terrain';
 import { MicroGrassLayer } from './microGrass';
+import { blendVegetationBases } from './vegetationIntegration';
 import { WindSystem, type WindFamily, type WindVariation } from './wind';
 import { createVegetationPlan, type Plant, type VegetationPlan } from './vegetationPlan';
 interface Moving {sprite:Phaser.GameObjects.Image;home:Plant;phase:number;age:number;life:number;}
@@ -20,6 +21,7 @@ export class VegetationLayer {
   const source=sheet.getSourceImage() as HTMLImageElement;
   const ground=document.createElement('canvas');ground.width=MAP.width/2;ground.height=MAP.height/2;
   const ctx=ground.getContext('2d')!;ctx.imageSmoothingEnabled=false;
+  blendVegetationBases(scene,ctx,masks,this.plan);
   for(const p of this.plan.plants){
    if(p.name.includes('FLOWER')||p.name.startsWith('BUSH_FLOWER'))this.flowers.push(p);
    if(p.name.includes('BLOSSOM')||p.name==='CHERRY_TREE')this.blossoms.push(p);
@@ -49,6 +51,9 @@ export class VegetationLayer {
   for(let i=0;i<28;i++)this.motes.push({sprite:scene.add.image(0,0,'vegetation','LEAVES').setVisible(false).setActive(false),home:this.trees[0],phase:i,age:0,life:0});
   for(let i=0;i<10;i++){const home=this.plan.plants.filter(p=>p.biome==='panda'||p.biome==='north')[i*7];if(!home)continue;
    this.fireflies.push({sprite:scene.add.image(home.x,home.y-25,'vegetation','FIREFLY').setDisplaySize(14,14).setVisible(false),home,phase:i,age:0,life:0});}
+ }
+ addFlowerHabitat(points:readonly (readonly [number,number])[]){
+  for(let i=0;i<Math.min(4,points.length);i++){const m=this.butterflies[i],p=points[i];m.home={...m.home,x:p[0],y:p[1],biome:'tulips'};}
  }
  setTwilight(enabled:boolean){this.twilight=enabled;}
  update(time:number,delta:number){

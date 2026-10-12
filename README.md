@@ -1,4 +1,4 @@
-> **Mapa actual: Capa 2 — vegetación y naturaleza.** La geometría aprobada de Capa 1 permanece intacta. El mundo incorpora atlas pixel art, bosque, bambú, jardines, orillas naturales, costa y vida ambiental. Consulta [la documentación de Capa 2](docs/world-phase-2.md) y [la base de Capa 1](docs/world-phase-1.md). No se añaden edificios ni animales de Capa 3.
+> **Mapa actual: Capa 2.5 — naturaleza final.** Conserva la Capa 2 y la geometría aprobada; añade microcésped más denso, integración de bases, viento espacial y Campo de Tulipanes Rosados. Consulta [la documentación de Capa 2.5](docs/world-phase-25.md). La Capa 3 no se inicia.
 
 # Granja Pollito 🐥
 

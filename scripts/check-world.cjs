@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('nod
 const {execFileSync}=require('node:child_process');
 const output=fs.mkdtempSync(path.join(os.tmpdir(),'granja-foundation-'));
 try {
- execFileSync('./node_modules/.bin/tsc',['--target','es2022','--module','commonjs','--outDir',output,'--skipLibCheck','--esModuleInterop','src/game/navigation.ts','src/game/world/mapConfig.ts','src/game/world/zones.ts','src/game/world/collisions.ts','src/game/world/vegetationPlan.ts','src/data/routes.ts','src/data/interiors.ts','src/data/celebration.ts','src/domain.ts','src/game/effects/particles.ts']);
+ execFileSync('./node_modules/.bin/tsc',['--target','es2022','--module','commonjs','--outDir',output,'--skipLibCheck','--esModuleInterop','src/game/navigation.ts','src/game/world/mapConfig.ts','src/game/world/zones.ts','src/game/world/collisions.ts','src/game/world/vegetationPlan.ts','src/game/world/tulipFieldPlan.ts','src/game/world/wind.ts','src/data/routes.ts','src/data/interiors.ts','src/data/celebration.ts','src/domain.ts','src/game/effects/particles.ts']);
  const {NavigationGrid,inside,rectangle}=require(path.join(output,'game/navigation.js'));
  const {navigation,navigationFor}=require(path.join(output,'game/world/collisions.js'));
  const {zones,zoneById}=require(path.join(output,'game/world/zones.js'));
@@ -19,7 +19,18 @@ try {
  assert.equal(plan.plants.filter(p=>p.biome==='landmark').length,10,'Landmarks conservados');
  assert.ok(plan.plants.some(p=>p.name==='REEDS_01'&&waterAt(p.x,p.y)),'Juncos parcialmente en agua');
  for(const p of plan.plants){if(p.solid)assert.ok(plan.obstacles.some(o=>inside([p.x,p.y],o)));for(const z of zones.filter(z=>['centralPlaza','cropsArea','jefeHouseArea','cowArea','chickenArea','mixedBarnArea','greenhouseArea','rabbitArea','sheepGoatArea'].includes(z.id)))assert.equal(inside([p.x,p.y],z.shape),false,'Parcela reservada '+z.id);}
- const nav=new NavigationGrid({...navigation,obstacles:[...navigation.obstacles,...plan.obstacles]},7);
+ const {createTulipFieldPlan,distanceToPath,fieldGround}=require(path.join(output,'game/world/tulipFieldPlan.js'));
+ const foundationNav=new NavigationGrid({...navigation,obstacles:[...navigation.obstacles,...plan.obstacles]},7);
+ const garden=createTulipFieldPlan(plan,foundationNav);
+ const nav=garden.nav;
+ assert.ok(garden.flowers.length>1100,'Campo grande');
+ for(const f of garden.flowers){assert.ok(fieldGround(f.x,f.y),'Tulipanes fuera de parcelas/agua');assert.ok(distanceToPath(f.x,f.y,garden.path)>=19,'Sendero del campo despejado');}
+ const bench=garden.props.find(p=>p.key==='BENCH'),tree=garden.props.find(p=>p.key==='TREE_BLOSSOM_PINK'),arch=garden.props.find(p=>p.key==='ARCH');
+ assert.equal(nav.canWalk(...bench.position),false,'Banca sólida');assert.equal(nav.canWalk(...tree.position),false,'Tronco del cerezo sólido');assert.equal(nav.canWalk(...arch.position),true,'Paso bajo arco');
+ assert.ok(nav.segment([arch.position[0],arch.position[1]-18],[arch.position[0],arch.position[1]+18]),'Cruzar bajo arco');
+ assert.ok(garden.flowers.some(f=>nav.canWalk(f.x,f.y)),'Tulipanes transitables');
+ for(let i=1;i<garden.path.length;i++)assert.ok(nav.segment(garden.path[i-1],garden.path[i]),'Sendero del campo transitable');
+ const {WindSystem}=require(path.join(output,'game/world/wind.js')),wind=new WindSystem(),variation=wind.variation(200,300);wind.strength=0;assert.equal(wind.response('tulips',4000,variation),0,'Viento quieto');wind.strength=.5;assert.notEqual(wind.response('tulips',4000,variation),wind.response('tulips',4000,wind.variation(400,300)),'Desfase espacial de viento');
  const trunk=plan.plants.find(p=>p.name==='TREE_GREEN_01');assert.ok(trunk);assert.equal(nav.canWalk(trunk.x,trunk.y),false,'Tronco bloqueado');assert.ok(trunk.height>80);assert.ok(Math.max(...footprint(trunk).map(p=>p[0]))-Math.min(...footprint(trunk).map(p=>p[0]))<trunk.width*.3,'Colisión solo base');
  assert.ok(plan.plants.some(p=>p.ground&&p.name.startsWith('FLOWERS_')&&nav.canWalk(p.x,p.y)),'Flores transitables');
  console.log(`Vegetación: ${plan.plants.length} instancias, ${plan.obstacles.length} bases sólidas, parcelas libres.`);let routes=0,samples=0;
@@ -53,6 +64,7 @@ try {
  assert.deepEqual(zones.filter((_,i)=>!connected.has(roads.length+i)).map(z=>z.id),[],'Sectores sin camino hacia Plaza Central');
  assert.deepEqual(roads.filter((_,i)=>!connected.has(i)).map(r=>r.id),[],'Senderos aislados');
  for(const z of zones)check(zoneById.centralPlaza.center,z.center,'plaza → '+z.id);
+ check(zoneById.centralPlaza.center,garden.rest,'plaza → Campo de Tulipanes');
  for(const p of [...gatheringPoints,...Object.values(celebrationHumans)])check(zoneById.centralPlaza.center,p,'sorpresa existente');
  for(const worker of workers){for(const [id,task] of Object.entries(taskRoutes)){check(worker.home,task.point,worker.id+' → '+id);check(task.point,worker.home,id+' → regreso');}for(const p of worker.path)check(worker.home,p,worker.id+' patrulla');}
  for(const b of [...bridges,...ramps])check(b.from,b.to,'cruce '+b.id);

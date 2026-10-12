@@ -26,10 +26,13 @@ export class MicroGrassLayer {
   const occupied=new Set<string>();for(const p of plan.plants)occupied.add(`${Math.floor(p.x/24)},${Math.floor(p.y/24)}`);
   const rest=zones.flatMap(z=>[z.approach,...(z.legacyObject?[z.center]:[])]);
   const crossings=[...bridges,...ramps];
-  for(let i=0;i<8500;i++){
+  for(let i=0;i<31000;i++){
    const x=Math.floor(random()*width),y=Math.floor(random()*height),wx=x*PIXEL,wy=y*PIXEL;
-   const patch=(Math.sin(x/27+y/67)+Math.cos(y/39-x/79)+2)/4;
+   const material=masks.surfaces[(y*width+x)*4],forest=material===11,panda=material===10,farm=material===9;
+   const patch=(Math.sin(x/(forest?19:27)+y/67)+Math.cos(y/(panda?29:39)-x/79)+2)/4;
    if(random()>.16+patch*.62)continue;
+   if(y>760&&random()>.7)continue;
+   if(farm&&random()>.85)continue;
    const size=3+Math.floor(random()*3);
    let clear=true;for(let dy=-size*2;dy<=1&&clear;dy++)for(let dx=-size;dx<=size;dx++)if(!green(x+dx,y+dy)){clear=false;break;}
    if(!clear)continue;
@@ -38,7 +41,7 @@ export class MicroGrassLayer {
    if(crossings.some(c=>Math.hypot(wx-c.from[0],wy-c.from[1])<65||Math.hypot(wx-c.to[0],wy-c.to[1])<65))continue;
    // Keep looser edges around paths and the plaza even inside green masks.
    if(!green(x-8,y)||!green(x+8,y)||!green(x,y-8)||!green(x,y+8))continue;
-   tufts.push({x,y,variant:Math.floor(random()*4),size,animated:random()<.15,offset:Math.floor(random()*4)});
+   tufts.push({x,y,variant:forest?2:panda?random()<.5?1:2:farm?Math.floor(random()*2):Math.floor(random()*4),size,animated:random()<.25,offset:Math.floor(random()*4)});
   }
   this.count=tufts.length;this.animatedCount=tufts.filter(t=>t.animated).length;
   const atlas=scene.textures.get('micro-grass'),source=atlas.getSourceImage() as HTMLImageElement;
@@ -78,8 +81,7 @@ export class MicroGrassLayer {
    chunk.nextFrame=time+180/chunk.variation.speed;
    const response=this.wind.response('grass',time,chunk.variation);
    const moving=Math.abs(response)>.075;
-   const direction=Math.cos(this.wind.direction)>=0?1:-1;
-   const phase=((Math.floor(time*.003*chunk.variation.speed+chunk.variation.offset)*direction)%4+4)%4;
+   const phase=Math.max(0,Math.min(3,Math.floor((response/Math.max(.01,this.wind.strength)*.5+.5)*4)));
    chunk.animatedImage.setFrame(moving?phase+1:0);
   }
  }
