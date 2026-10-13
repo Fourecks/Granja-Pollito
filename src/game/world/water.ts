@@ -3,6 +3,7 @@ import { MAP, waterfalls, bridges, cliffFaces } from './mapConfig';
 import { inside } from '../navigation';
 import type { WaterfallPlacement } from './waterfallGeometry';
 import type { WorldMasks } from './terrain';
+import { submergedRockColor } from './SubmergedCliffLayer';
 import { WaterHabitat } from './waterHabitat';
 export class WaterLayer {
  private ripples:Phaser.GameObjects.Graphics;private lastFrame=-1;
@@ -10,7 +11,8 @@ export class WaterLayer {
  private layers:Phaser.GameObjects.Image[]=[];private cullAt=0;private textureBytes=0;
  private falls:Phaser.GameObjects.Sprite[]=[];private ticks=0;
  private rocks:Phaser.GameObjects.Image[]=[];
- constructor(private scene:Phaser.Scene,private masks:WorldMasks){
+ private riverColors=new Uint8ClampedArray(1536*1024*3);
+ constructor(private scene:Phaser.Scene,private masks:WorldMasks,private submergedFade?:Float32Array){
   this.habitat=new WaterHabitat(masks);this.createDepthLayers();
   this.ripples=scene.add.graphics().setDepth(-12);
   for(const [index,fall] of waterfalls.entries()){
@@ -25,6 +27,14 @@ export class WaterLayer {
    // Keep mossy shoulders at the actual lip, independently of the length of falling water.
    const rock=scene.textures.get('bridge-stone').get('stone');
    for(const side of [-1,1])this.rocks.push(scene.add.image(fall.position[0]+side*(fall.width+4),fall.position[1]+12,'bridge-stone','stone').setOrigin(.5,1).setScale(25/rock.height).setDepth(-7.9));
+   if(fall.historical){const original=sheet.get('0');
+    for(const [side,x0] of [[-1,0],[1,.62]]){const name=`historical-rock-${side}`,fh=Math.floor(original.cutHeight*.49),fw=Math.floor(original.cutWidth*.38);
+     const c=document.createElement('canvas');c.width=fw;c.height=fh;const ctx=c.getContext('2d')!;
+     ctx.drawImage(sheet.getSourceImage() as HTMLImageElement,original.cutX+Math.floor(original.cutWidth*x0),original.cutY+Math.floor(original.cutHeight*.18),fw,fh,0,0,fw,fh);
+     const data=ctx.getImageData(0,0,fw,fh);for(let i=0;i<data.data.length;i+=4){const r=data.data[i],g=data.data[i+1],b=data.data[i+2];if(b>r*1.02&&b>g*.88||r>200&&g>220&&b>220)data.data[i+3]=0;}ctx.putImageData(data,0,0);scene.textures.addCanvas(name,c);
+     this.rocks.push(scene.add.image(fall.foot[0]+side*(fall.width-8),fall.foot[1],name).setOrigin(side<0?1:0,1).setScale(55/fh).setDepth(-7.9));
+    }
+   }
 
   }
  }
@@ -37,16 +47,22 @@ export class WaterLayer {
    let center=fall.position[0];
    if(wy>=fall.foot[1])center=fall.foot[0];else if(wy>fall.position[1])for(let n=1;n<fall.flow.length;n++){const a=fall.flow[n-1],b=fall.flow[n];if(wy<=b[1]){center=a[0]+(b[0]-a[0])*(wy-a[1])/(b[1]-a[1]);break;}}
    const across=(wx-center)/fall.width;if(Math.abs(across)>1)continue;
-   const falling=inside([wx,wy],cliffFaces[fall.cliffIndex]),t=Math.max(0,Math.min(1,(wy-fall.position[1])/drop));
+   const falling=fall.historical?wy>=fall.position[1]&&wy<=fall.foot[1]:inside([wx,wy],cliffFaces[fall.cliffIndex]),t=Math.max(0,Math.min(1,(wy-fall.position[1])/drop));
    let sx:number,sy:number;
    if(falling){sx=Math.round(src.width*(.5+across*.085));sy=Math.round(src.height*(.35+t*.29));}
    else if(wy<fall.position[1]){sx=Math.round(src.width*(.5+across*.12));sy=Math.round(src.height*(.24+(wy-fall.position[1]+14)/14*.10));}
    else {sx=Math.round(src.width*(.5+across*.24));sy=Math.round(src.height*(.66+(wy-fall.foot[1])/24*.27));}
    sx=Math.max(0,Math.min(src.width-1,sx));sy=Math.max(0,Math.min(src.height-1,sy));const i=(sy*src.width+sx)*4;
    const blue=pixels[i+2]>pixels[i]*1.02&&pixels[i+2]>pixels[i+1]*.88;
-   if(!blue&&!falling)continue;
-   const alpha=falling?255:Math.min(pixels[i+3],Math.round(220*(1-Math.max(0,wy-fall.foot[1])/26)));
-   const color=blue?[pixels[i],pixels[i+1],pixels[i+2]]:[42,139,161];output.data.set([...color,alpha],j);
+   const q=Math.floor(mask/4)*3,river=[this.riverColors[q],this.riverColors[q+1],this.riverColors[q+2]];
+   const sample=blue?[pixels[i],pixels[i+1],pixels[i+2]]:river;
+   const bright=sample[1]>170&&sample[2]>190;
+   // The current river is the literal 75% base; highlights occupy restrained lip/streak/impact regions.
+   const light=bright&&((falling&&t<.07)||(!falling&&wy>=fall.foot[1]&&wy<fall.foot[1]+5)||falling&&x%11<3)? .50:.25;
+   const color=river.map((v,k)=>Math.round(v*(1-light)+sample[k]*light));
+   const edge=Math.min(1,(1-Math.abs(across))*7);
+   const fade=wy<fall.position[1]?Math.max(0,(wy-fall.position[1]+14)/14):wy>=fall.foot[1]?Math.max(0,1-(wy-fall.foot[1])/20):1;
+   const alpha=Math.round(255*edge*fade);output.data.set([...color,alpha],j);
   }
   return output;
  }
@@ -70,7 +86,9 @@ export class WaterLayer {
      const textured=mid[k]*(1-t)+deep[k]*t,quiet=[17,110,144][k];
      water.data[j+k]=Math.round(textured*.60+quiet*.40+n%3-1);
     }
-    floor.data[j+3]=255;water.data[j+3]=Math.round(255*(.40+.58*t));
+    floor.data[j+3]=255;water.data[j+3]=Math.round(255*Math.min(.40+.58*t,.98-(this.submergedFade?.[i]??0)*.30));
+    const a=water.data[j+3]/255,rockAlpha=Math.round(230*(this.submergedFade?.[i]??0))/255,rockColor=submergedRockColor(gx,gy);
+    for(let k=0;k<3;k++){const bed=rockColor[k]*rockAlpha+floor.data[j+k]*(1-rockAlpha);this.riverColors[i*3+k]=Math.round(bed*(1-a)+water.data[j+k]*a);}
    }
    if(!filled)continue;bc.putImageData(floor,0,0);sc.putImageData(water,0,0);
    for(const [name,c,depth] of [['riverbed',bed,-29],['water-depth',surface,-28]] as const){

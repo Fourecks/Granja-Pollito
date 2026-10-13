@@ -21,10 +21,12 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
     const c=o.texture.getSourceImage(),d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;
     for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++)if(d[(y*c.width+x)*4+3]>127&&cliffFaces.some(face=>inside([o.x+x,o.y+y],face)))bridgeWallPixels++;
    }
-   return {missing,waterWalls,bridgeWallPixels,stairs:scene.ramps.diagnostics.stairs};
+   let invalidSubmerged=0,submergedPixels=0;for(let i=0;i<scene.submerged.fade.length;i++)if(scene.submerged.fade[i]>0){submergedPixels++;if(masks.water[i*4+3]<128||masks.cliffWalls[i*4+3]>127)invalidSubmerged++;}
+   const underwaterOrder=scene.submerged.objects.every(o=>o.depth===-28.5)&&scene.water.layers.every(o=>o.depth===-28||o.depth===-29);
+   return {missing,waterWalls,bridgeWallPixels,stairs:scene.ramps.diagnostics.stairs,submergedPixels,invalidSubmerged,underwaterOrder,falls:scene.water.falls.length};
   });
   assert.equal(result.missing,0,'Every original cliff pixel must render, including water intersections');
   assert(result.waterWalls>25000,'The historical coastline must remain visible above the sea');
-  assert.equal(result.bridgeWallPixels,0,'Bridge decks must not paint over cliff walls');assert.equal(result.stairs,8);assert.deepEqual(errors,[]);console.log('OK:',result);
+  assert.equal(result.bridgeWallPixels,0,'Bridge decks must not paint over cliff walls');assert.equal(result.stairs,8);assert(result.submergedPixels>0);assert.equal(result.invalidSubmerged,0);assert(result.underwaterOrder);assert.equal(result.falls,5);assert.deepEqual(errors,[]);console.log('OK:',result);
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1)});

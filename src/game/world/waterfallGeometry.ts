@@ -1,7 +1,7 @@
 import { inside, type Point, type Polygon } from '../navigation';
 interface River {id:string;line:Polygon;width:number}
 interface Cliff {id:string;line:Polygon;height:number}
-export interface WaterfallPlacement {id:string;riverId:string;cliffId:string;cliffIndex:number;position:Point;foot:Point;flow:Polygon;width:number;height:number;kind:'small'|'medium'}
+export interface WaterfallPlacement {id:string;riverId:string;cliffId:string;cliffIndex:number;position:Point;foot:Point;flow:Polygon;width:number;height:number;kind:'small'|'medium';historical?:boolean}
 function intersection(a:Point,b:Point,c:Point,d:Point){
  const dx=b[0]-a[0],dy=b[1]-a[1],ex=d[0]-c[0],ey=d[1]-c[1],den=dx*ey-dy*ex;if(Math.abs(den)<1e-9)return;
  const cx=c[0]-a[0],cy=c[1]-a[1],t=(cx*ey-cy*ex)/den,u=(cx*dy-cy*dx)/den;
@@ -38,5 +38,7 @@ export function placeWaterfalls(rivers:readonly River[],cliffs:readonly Cliff[],
    }
   }
  }
+ // Git anchor: point(565,43); user-approved local historical visual drop only.
+ result.unshift({id:'north-falls',riverId:'north-river',cliffId:'historical-north-drop',cliffIndex:-1,position:[1130,86],foot:[1130,146],flow:[[1130,86],[1130,146]],width:34,height:30,kind:'medium',historical:true});
  return result;
 }

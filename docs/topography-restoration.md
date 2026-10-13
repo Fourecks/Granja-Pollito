@@ -1,3 +1,5 @@
+> Informe histórico de la capa 3.0. La cascada norte vuelve en la capa 3.1 mediante el desnivel visual autorizado; detalles en water-contact-polish.md. La geometría restaurada permanece idéntica.
+
 # Restauración selectiva de topografía — capa 3.0
 
 ## Referencia histórica y causa
