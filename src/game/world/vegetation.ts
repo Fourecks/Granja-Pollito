@@ -27,6 +27,7 @@ export class VegetationLayer {
   const ctx=ground.getContext('2d')!;ctx.imageSmoothingEnabled=false;
   blendVegetationBases(scene,ctx,masks,{plants:this.visual.plants,obstacles:this.plan.obstacles});
   for(const p of this.visual.plants){
+   if(['GRASS_SHORT','GRASS_WILD','WEEDS_SMALL'].includes(p.name))continue;
    if(p.name.includes('FLOWER')||p.name.startsWith('BUSH_FLOWER'))this.flowers.push(p);
    if(p.name.includes('BLOSSOM')||p.name==='CHERRY_TREE')this.blossoms.push(p);
    if(p.name!=='TREE_STUMP'&&(p.name.includes('TREE')||p.name.startsWith('PINE')))this.trees.push(p);
@@ -39,7 +40,7 @@ export class VegetationLayer {
    if(flowerSway)this.windPlants.push({sprite,family:'flowers',variation:this.wind.variation(p.x,p.y),amplitude:.025});
    if(p.name.startsWith('BAMBOO')&&this.windPlants.filter(o=>o.family==='bamboo').length<24)this.windPlants.push({sprite,family:'bamboo',variation:this.wind.variation(p.x,p.y),amplitude:.014});
   }
-  this.integration=new ObjectIntegrationLayer(scene,masks,this.visual.plants.filter(p=>!p.ground&&(p.solid||p.name.includes('BUSH')||p.name.startsWith('BAMBOO')||p.name.startsWith('REEDS')||p.name==='CATTAILS')).map((p,i)=>({id:`vegetation-${i}`,x:p.x,y:p.y+p.height*.04,depth:p.y,span:p.drawWidth*(isTree(p)?.32:.8),cover:Math.min(10,p.height*.2),wet:p.biome==='shore'})));
+  this.integration=new ObjectIntegrationLayer(scene,masks,this.visual.plants.filter(p=>(p.solid||p.name.includes('ROCK')||p.name.includes('LOG')||p.name==='BRANCHES'||p.name.includes('FLOWER')||p.name.includes('BUSH')||p.name.startsWith('BAMBOO')||p.name.startsWith('REEDS')||p.name==='CATTAILS')).map((p,i)=>({id:`vegetation-${i}`,x:p.x,y:p.y+p.height*.04,depth:p.ground?-8:p.y,span:p.drawWidth*(isTree(p)?.32:.8),cover:Math.min(10,p.height*.2),wet:p.biome==='shore'})));
   // Bake small non-blocking detail into transparent 256-world-unit chunks.
   for(let y=0;y<ground.height;y+=128)for(let x=0;x<ground.width;x+=128){
    const c=document.createElement('canvas');c.width=c.height=128;const cc=c.getContext('2d')!;cc.drawImage(ground,x,y,128,128,0,0,128,128);

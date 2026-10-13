@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { MAP } from './mapConfig';
+import { drawGrass } from './grassArt';
 import type { WorldMasks } from './terrain';
 import type { VegetationPlan, Plant } from './vegetationPlan';
 /** Static base transitions, sharing the ground-cover canvas and existing atlas. */
@@ -24,6 +25,7 @@ export function blendVegetationBases(scene:Phaser.Scene,ctx:CanvasRenderingConte
    if(kind==='rock'&&random()<.18)name='ROCK_SMALL';
    if(kind==='tree'&&random()<.28)name='LEAVES';
    if(kind==='flower'&&i===0)name=p.name;
+   if(name==='GRASS_SHORT'){ctx.save();ctx.globalAlpha=.7;drawGrass(ctx,Math.round(x),Math.round(y),10+Math.floor(random()*2),Math.floor(random()*4294967295));ctx.restore();continue;}
    const f=sheet.get(name);ctx.save();ctx.globalAlpha=wet?.72:.65+random()*.3;
    if(wet){ctx.fillStyle='#716940';ctx.globalAlpha=.22;ctx.fillRect(Math.round(x-size),Math.round(y-1),size*2,2);ctx.globalAlpha=.75;}
    const h=size*2,w=h*f.cutWidth/f.cutHeight;ctx.drawImage(source,f.cutX,f.cutY,f.cutWidth,f.cutHeight,x-w/2,y-h,w,h);ctx.restore();
