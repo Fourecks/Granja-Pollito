@@ -53,9 +53,9 @@ export class MicroGrassLayer {
   const atlas=scene.textures.get('micro-grass'),source=atlas.getSourceImage() as HTMLImageElement;
   const draw=(ctx:CanvasRenderingContext2D,t:Tuft,frame:number,cx:number,cy:number)=>{
    const f=atlas.get(`grass_${['idle','sway_1','sway_2','sway_3'][frame]}_${t.variant}`);
-   const [pw,ph]=profiles[t.profile],w=Math.max(2,Math.round(t.size*2*pw)),h=Math.max(3,Math.round(t.size*2*ph));
+   const [pw,ph]=profiles[t.profile],h=Math.max(3,t.size*(pw+ph)),w=h*f.cutWidth/f.cutHeight;
    ctx.save();ctx.globalAlpha=t.alpha;ctx.translate(t.x-cx,t.y-cy);if(t.mirror)ctx.scale(-1,1);
-   ctx.drawImage(source,f.cutX,f.cutY,f.cutWidth,f.cutHeight,-Math.floor(w/2),-h,w,h);ctx.restore();
+   ctx.drawImage(source,f.cutX,f.cutY,f.cutWidth,f.cutHeight,-w/2,-h,w,h);ctx.restore();
   };
   for(let cy=0;cy<height;cy+=CHUNK)for(let cx=0;cx<width;cx+=CHUNK){
    const local=tufts.filter(t=>t.x>=cx&&t.x<cx+CHUNK&&t.y>=cy&&t.y<cy+CHUNK);if(!local.length&&!Array.from({length:CHUNK},(_,dy)=>dy).some(dy=>Array.from({length:CHUNK},(_,dx)=>dx).some(dx=>green(cx+dx,cy+dy))))continue;
@@ -68,10 +68,10 @@ export class MicroGrassLayer {
     if(x%8===0&&y%8===0){this.greenCells++;}
     const growth=cluster(gx,gy,53);
     if(hash(gx+311,gy-79)>.10+growth*.18)continue;
-    const h=1+(hash(gx-11,gy+91)>.64?1:0),w=1+(hash(gx+33,gy)>.72?1:0);if(!green(gx,gy-h)||(w===2&&(!green(gx+1,gy)||!green(gx+1,gy-h))))continue;
-    const blade=atlas.get(`grass_idle_${Math.floor(hash(gx+29,gy)*4)}`);
+    const h=1+(hash(gx-11,gy+91)>.64?1:0),blade=atlas.get(`grass_idle_${Math.floor(hash(gx+29,gy)*4)}`),w=Math.ceil(h*blade.cutWidth/blade.cutHeight);
+    if(!green(gx,gy-h)||!green(gx+w-1,gy)||!green(gx+w-1,gy-h))continue;
     ctx.globalAlpha=.22+hash(gx,gy+171)*.19;
-    ctx.drawImage(source,blade.cutX,blade.cutY,blade.cutWidth,blade.cutHeight,x+padding, y+padding-h,w,h);this.fineBlades++;
+    ctx.drawImage(source,blade.cutX,blade.cutY,blade.cutWidth,blade.cutHeight,x+padding, y+padding-h,h*blade.cutWidth/blade.cutHeight,h);this.fineBlades++;
    }ctx.globalAlpha=1;
    for(const t of local.filter(t=>!t.animated))draw(ctx,t,0,cx-padding,cy-padding);
    // Coverage tracks small green cells containing any fine texture, not opaque alpha coverage.

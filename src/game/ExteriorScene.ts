@@ -28,7 +28,7 @@ export class ExteriorScene extends WorldScene {
   this.vegetation=new VegetationLayer(this,this.terrain.masks,this.wind);
   this.nav=new NavigationGrid({...navigation,obstacles:[...navigation.obstacles,...this.vegetation.plan.obstacles]},7);
   const garden=createTulipFieldPlan(this.vegetation.plan,this.nav);
-  this.tulips=new TulipFieldLayer(this,garden,this.wind);
+  this.tulips=new TulipFieldLayer(this,garden,this.wind,this.terrain.masks);
   this.nav=garden.nav;
   this.vegetation.addFlowerHabitat(garden.flowers.filter((_,i)=>i%500===0).slice(0,4).map(p=>[p.x,p.y]));
   const camera=this.cameras.main,fit=Math.max(this.scale.width/MAP.width,this.scale.height/MAP.height),dpr=Math.min(window.devicePixelRatio||1,2);

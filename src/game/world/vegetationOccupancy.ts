@@ -21,8 +21,10 @@ export function resolveVegetationOccupancy(plan:VegetationPlan){
  for(const group of groups){
   const primary=group.members.slice().sort((a,b)=>b.height-a.height)[0];
   const name=group.members.length>1&&group.members.every(p=>p.name.includes('ROCK'))?'ROCK_CLUSTER':primary.name;
-  const frame=frames[name].frame,height=name==='ROCK_CLUSTER'&&group.members.length>1?Math.max(primary.height,group.area.bottom-group.area.top+6):name==='TREE_STUMP'?Math.min(17,primary.height):name.includes('LOG')?Math.min(22,primary.height):primary.height;
-  const width=group.members.length>1?Math.max(height*frame.w/frame.h,(group.area.right-group.area.left)*1.18):name.includes('LOG')?Math.max(primary.height*frame.w/frame.h,group.area.right-group.area.left+4):height*frame.w/frame.h;
+  const frame=frames[name].frame;
+  // A reserved collision union is not a request to stretch/enlarge its visual model.
+  const height=name==='TREE_STUMP'?17:name==='ROCK_CLUSTER'&&group.members.length>1?Math.max(primary.height,Math.min(56,group.area.bottom-group.area.top+6)):primary.height;
+  const width=height*frame.w/frame.h;
   const plant:VisualPlant={...primary,name,height,x:group.members.length>1?(group.area.left+group.area.right)/2:primary.x,y:group.members.length>1?Math.max(...group.members.map(p=>p.y)):primary.y,drawWidth:width,ground:false,occupied:group.area};
   result.push(plant);occupied.push(group.area);
  }
@@ -38,10 +40,13 @@ export function resolveVegetationOccupancy(plan:VegetationPlan){
   const f=frames[p.name].frame,width=p.height*f.w/f.h;
   const large=structural(p),tall=p.name.startsWith('REEDS')||p.name==='CATTAILS'||p.name==='GRASS_TALL';
   const area={left:p.x-width*.47,right:p.x+width*.47,top:p.y-p.height*.94,bottom:p.y+2};
-  if((large||tall)&&blockers.some(a=>overlaps(area,a,large?5:2))){suppressed++;continue;}
+  const smallFlower=p.name.startsWith('FLOWERS_')||p.name==='GRASS_FLOWERING';
+  const rootArea={left:p.x-width*.25,right:p.x+width*.25,top:p.y-3,bottom:p.y+2};
+  if(((large||tall)&&blockers.some(a=>overlaps(area,a,large?5:2)))||(smallFlower&&blockers.some(a=>overlaps(rootArea,a)))){suppressed++;continue;}
   if(large){blockers.push(area);occupied.push(area);}
   result.push({...p,drawWidth:width,ground:large?false:p.ground,occupied:large?area:undefined});
  }
  const polish=polishVegetation(result);
+ for(const p of polish.plants){const f=frames[p.name].frame;if(p.name==='BRANCHES'&&p.solid)p.height=15;p.drawWidth=p.height*f.w/f.h;}
  return {...polish,occupied,suppressed,merged:solids.length-groups.length,structuralCount:occupied.length};
 }

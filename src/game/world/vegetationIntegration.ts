@@ -26,7 +26,7 @@ export function blendVegetationBases(scene:Phaser.Scene,ctx:CanvasRenderingConte
    if(kind==='flower'&&i===0)name=p.name;
    const f=sheet.get(name);ctx.save();ctx.globalAlpha=wet?.72:.65+random()*.3;
    if(wet){ctx.fillStyle='#716940';ctx.globalAlpha=.22;ctx.fillRect(Math.round(x-size),Math.round(y-1),size*2,2);ctx.globalAlpha=.75;}
-   ctx.drawImage(source,f.cutX,f.cutY,f.cutWidth,f.cutHeight,Math.round(x-size),Math.round(y-size*2),size*2,size*2);ctx.restore();
+   const h=size*2,w=h*f.cutWidth/f.cutHeight;ctx.drawImage(source,f.cutX,f.cutY,f.cutWidth,f.cutHeight,x-w/2,y-h,w,h);ctx.restore();
   }
  }
 }

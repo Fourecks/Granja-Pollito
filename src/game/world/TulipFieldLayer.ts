@@ -1,16 +1,20 @@
 import Phaser from 'phaser';
 import { MAP } from './mapConfig';
 import { WindSystem, type WindVariation } from './wind';
+import { ObjectIntegrationLayer } from './objectIntegration';
+import type { WorldMasks } from './terrain';
 import { selectReadableTulips } from './tulipDisplay';
 import type { TulipFieldPlan, Tulip } from './tulipFieldPlan';
 interface Patch {image:Phaser.GameObjects.Image;moving:boolean;variation:WindVariation;nextFrame:number;}
 const names=['PINK_TULIP_01','PINK_TULIP_02','PINK_TULIP_03','PINK_TULIP_04','PINK_TULIP_BUD','PINK_TULIP_CLUSTER_SMALL','PINK_TULIP_CLUSTER_MEDIUM','PINK_TULIP_CLUSTER_LARGE'];
 export class TulipFieldLayer {
  private objects:Phaser.GameObjects.Image[]=[];
- private flowerCount=0;
+ private flowerCount=0;private integration:ObjectIntegrationLayer;
  private patches:Patch[]=[];private visible:Patch[]=[];private cullAt=0;
- constructor(private scene:Phaser.Scene,readonly plan:TulipFieldPlan,private wind:WindSystem){
+ constructor(private scene:Phaser.Scene,readonly plan:TulipFieldPlan,private wind:WindSystem,masks:WorldMasks){
   this.ground();this.flowers();this.props();
+  const anchors=this.plan.props.filter(p=>p.key!=='BENCH').flatMap(p=>(p.key==='ARCH'?[-34,34]:p.key==='FENCE'?[-21,21]:[0]).map((dx,i)=>({id:`${p.id}-${i}`,x:p.position[0]+dx,y:p.position[1]+p.height*.04,depth:p.position[1],span:p.key==='TREE_BLOSSOM_PINK'?28:13,cover:6})));
+  this.integration=new ObjectIntegrationLayer(scene,masks,anchors,'tulip-prop-integration');
  }
  private ground(){
   const c=document.createElement('canvas');c.width=MAP.width/2;c.height=MAP.height/2;const ctx=c.getContext('2d')!;
@@ -54,18 +58,19 @@ export class TulipFieldLayer {
    if(prop.key==='ARCH'){
     const texture=this.scene.textures.get('tulip-garden'),f=texture.get('ARCH'),split=Math.round(f.height*.43),scale=prop.height/f.height;
     if(!texture.has('ARCH_CROWN')){texture.add('ARCH_CROWN',0,f.cutX,f.cutY,f.cutWidth,split);texture.add('ARCH_POSTS',0,f.cutX,f.cutY+split,f.cutWidth,f.cutHeight-split);}
-    const width=f.width*scale,top=y-prop.height*.96;
-    this.objects.push(this.scene.add.image(x,top,'tulip-garden','ARCH_CROWN').setOrigin(.5,0).setDisplaySize(width,split*scale).setDepth(y+36));
-    this.objects.push(this.scene.add.image(x,top+split*scale,'tulip-garden','ARCH_POSTS').setOrigin(.5,0).setDisplaySize(width,(f.height-split)*scale).setDepth(y));
+    const top=y-prop.height*.96;
+    this.objects.push(this.scene.add.image(x,top,'tulip-garden','ARCH_CROWN').setOrigin(.5,0).setScale(scale).setDepth(y+36));
+    this.objects.push(this.scene.add.image(x,top+split*scale,'tulip-garden','ARCH_POSTS').setOrigin(.5,0).setScale(scale).setDepth(y));
     continue;
    }
    const key=prop.key==='TREE_BLOSSOM_PINK'?'vegetation':'tulip-garden',f=this.scene.textures.get(key).get(prop.key);
-   const image=this.scene.add.image(x,y,key,prop.key).setOrigin(.5,.96).setDisplaySize(prop.key==='BENCH'?80:prop.height*f.width/f.height,prop.height).setDepth(y).setData('naturalObject',{id:prop.id,kind:prop.key,interaction:prop.key==='BENCH'?'sit-prepared':undefined});
+   const image=this.scene.add.image(x,y,key,prop.key).setOrigin(.5,.96).setScale(prop.height/f.height).setDepth(y).setData('naturalObject',{id:prop.id,kind:prop.key,interaction:prop.key==='BENCH'?'sit-prepared':undefined});
    if(prop.key==='BENCH'){image.setInteractive({useHandCursor:true});image.on('pointerup',()=>this.scene.events.emit('natural-object-selected',{id:prop.id,kind:'bench',position:prop.position}));}
    this.objects.push(image);
   }
  }
  update(time:number){
+  this.integration.update(time,this.scene.cameras.main.worldView);
   if(time>=this.cullAt){this.cullAt=time+160;const view=this.scene.cameras.main.worldView;this.visible=[];
    for(const o of this.objects)o.setVisible(Phaser.Geom.Rectangle.Overlaps(view,o.getBounds()));for(const p of this.patches)if(p.image.visible&&p.moving)this.visible.push(p);
   }
@@ -73,5 +78,5 @@ export class TulipFieldLayer {
    p.image.setFrame(Math.abs(response)<.025?0:1+Math.max(0,Math.min(3,Math.floor((response/Math.max(.03,this.wind.strength)*.5+.5)*4))));
   }
  }
- get diagnostics(){const moving=this.patches.filter(p=>p.moving).length;return {id:this.plan.zone.id,clusters:this.plan.flowers.length,visibleFlowerModels:this.flowerCount,patches:this.patches.length,animatedPatches:moving,animatedPercent:Math.round(moving/this.patches.length*100),visibleAnimated:this.visible.length,props:this.plan.props.length,obstacles:this.plan.obstacles.length,bench:'pinkTulipBench',archWalkable:true};}
+ get diagnostics(){const moving=this.patches.filter(p=>p.moving).length;return {integration:this.integration.diagnostics,id:this.plan.zone.id,clusters:this.plan.flowers.length,visibleFlowerModels:this.flowerCount,patches:this.patches.length,animatedPatches:moving,animatedPercent:Math.round(moving/this.patches.length*100),visibleAnimated:this.visible.length,props:this.plan.props.length,obstacles:this.plan.obstacles.length,bench:'pinkTulipBench',archWalkable:true};}
 }
