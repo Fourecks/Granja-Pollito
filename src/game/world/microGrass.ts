@@ -64,6 +64,16 @@ export class MicroGrassLayer {
    const local=buckets.get(`${cx/CHUNK},${cy/CHUNK}`)??[];if(!local.length&&!Array.from({length:CHUNK},(_,dy)=>dy).some(dy=>Array.from({length:CHUNK},(_,dx)=>dx).some(dx=>green(cx+dx,cy+dy))))continue;
    // Padding lets tufts straddle chunk boundaries without clipping their tips.
    const padding=12,side=CHUNK+padding*2;
+   const clip=(context:CanvasRenderingContext2D,offset=0,edgeTips=false)=>{
+    const pixels=context.getImageData(offset,0,side,side);
+    for(let y=0;y<side;y++)for(let x=0;x<side;x++){
+     const i=(y*side+x)*4;if(!pixels.data[i+3])continue;
+     const gx=cx-padding+x,gy=cy-padding+y;if(green(gx,gy))continue;
+     const j=(gy*width+gx)*4;
+     const tip=edgeTips&&gx>=0&&gy>=0&&gx<width&&gy<height&&masks.land[j+3]>127&&masks.paths[j+3]>127&&!masks.water[j+3]&&!masks.cliffs[j+3]&&[0,9,10,11].includes(masks.surfaces[j])&&hash(gx+73,gy)<.12&&[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>green(gx+dx,gy+dy));
+     if(!tip)pixels.data[i+3]=0;
+    }context.putImageData(pixels,offset,0);
+   };
    const staticCanvas=document.createElement('canvas');staticCanvas.width=staticCanvas.height=side;
    const ctx=staticCanvas.getContext('2d')!;ctx.imageSmoothingEnabled=false;
    // Fine understory fills the gaps between tufts, with no extra textures or GameObjects.
@@ -83,6 +93,7 @@ export class MicroGrassLayer {
     drawGrass(ctx,x+padding,y+padding,profile,Math.floor(hash(gx,gy)*4294967295));this.fineBlades++;
    }ctx.globalAlpha=1;
    for(const t of local.filter(t=>!t.animated))draw(ctx,t,0,cx-padding,cy-padding);
+   clip(ctx,0,true);
    // Coverage tracks small green cells containing any fine texture, not opaque alpha coverage.
    for(let y=0;y<CHUNK;y+=8)for(let x=0;x<CHUNK;x+=8){if(!green(cx+x,cy+y))continue;const pixels=ctx.getImageData(x+padding,y+padding,8,8).data;if(pixels.some((v,i)=>i%4===3&&v>0))this.texturedGreenCells++;}
    const key=`micro-grass-static-${cx}-${cy}`;if(scene.textures.exists(key))scene.textures.remove(key);scene.textures.addCanvas(key,staticCanvas);
@@ -94,7 +105,7 @@ export class MicroGrassLayer {
     const frameCtx=framesCanvas.getContext('2d')!;frameCtx.imageSmoothingEnabled=false;
     // Frame 0 is genuinely still. Four animated batches use independent tuft phases.
     for(let frame=0;frame<5;frame++){frameCtx.save();frameCtx.translate(side*frame,0);
-     for(const t of moving)draw(frameCtx,t,frame===0?0:1+(frame-1+t.offset)%4,cx-padding,cy-padding);frameCtx.restore();}
+     for(const t of moving)draw(frameCtx,t,frame===0?0:1+(frame-1+t.offset)%4,cx-padding,cy-padding);frameCtx.restore();clip(frameCtx,side*frame);}
     const animatedKey=`micro-grass-sway-${cx}-${cy}`;if(scene.textures.exists(animatedKey))scene.textures.remove(animatedKey);
     const texture=scene.textures.addCanvas(animatedKey,framesCanvas)!;for(let frame=0;frame<5;frame++)texture.add(frame,0,side*frame,0,side,side);
     chunk.animatedImage=scene.add.image((cx-padding)*PIXEL,(cy-padding)*PIXEL,animatedKey,0).setOrigin(0).setScale(PIXEL).setDepth(-14.9);
