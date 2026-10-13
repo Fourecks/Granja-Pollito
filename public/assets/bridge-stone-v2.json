@@ -1,0 +1,129 @@
+{
+  "frames": {
+    "planks": {
+      "frame": {
+        "x": 8,
+        "y": 8,
+        "w": 240,
+        "h": 152
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 152
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 152
+      }
+    },
+    "post": {
+      "frame": {
+        "x": 264,
+        "y": 8,
+        "w": 240,
+        "h": 156
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 156
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 156
+      }
+    },
+    "beam": {
+      "frame": {
+        "x": 520,
+        "y": 8,
+        "w": 240,
+        "h": 142
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 142
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 142
+      }
+    },
+    "stone": {
+      "frame": {
+        "x": 8,
+        "y": 264,
+        "w": 240,
+        "h": 184
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 184
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 184
+      }
+    },
+    "decor": {
+      "frame": {
+        "x": 264,
+        "y": 264,
+        "w": 240,
+        "h": 135
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 135
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 135
+      }
+    },
+    "landing": {
+      "frame": {
+        "x": 520,
+        "y": 264,
+        "w": 240,
+        "h": 150
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 150
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 150
+      }
+    }
+  },
+  "meta": {
+    "image": "bridge-stone-v2.png",
+    "scale": "1",
+    "generator": "ImageGen; primary reference Dise\u00f1os de puentes, cascadas y r\u00edos.png"
+  }
+}

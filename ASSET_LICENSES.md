@@ -52,3 +52,5 @@ Los prompts de producción y el inventario están en `docs/plaza-assets.md`.
 ## Puentes y agua — referencia propia (octubre 2026)
 
 Los seis atlases `bridge-{rustic,farm,large}-v1`, `waterfall-{main,small}-v1` y `water-depth-v1` fueron creados para este proyecto con ImageGen integrada usando la guía de puentes/cascadas aportada por el usuario como referencia principal. No se emplean paquetes de terceros. Inventario, prompts finales y preparación de sprites: `docs/river-assets-prompts.md`. La guía no se distribuye como asset de juego.
+
+Mini river v2: bridge-stone-v2, waterfall-medium-v2 y waterfall-small-v2 son assets originales de ImageGen integrada basados en la referencia aportada por el usuario «Diseños de puentes, cascadas y ríos.png». Prompts e inventario: docs/mini-river-prompts.md.

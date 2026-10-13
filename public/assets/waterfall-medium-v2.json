@@ -1,0 +1,129 @@
+{
+  "frames": {
+    "0": {
+      "frame": {
+        "x": 8,
+        "y": 8,
+        "w": 240,
+        "h": 259
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 259
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 259
+      }
+    },
+    "1": {
+      "frame": {
+        "x": 264,
+        "y": 8,
+        "w": 240,
+        "h": 259
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 259
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 259
+      }
+    },
+    "2": {
+      "frame": {
+        "x": 520,
+        "y": 8,
+        "w": 240,
+        "h": 259
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 259
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 259
+      }
+    },
+    "3": {
+      "frame": {
+        "x": 8,
+        "y": 283,
+        "w": 240,
+        "h": 259
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 259
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 259
+      }
+    },
+    "4": {
+      "frame": {
+        "x": 264,
+        "y": 283,
+        "w": 240,
+        "h": 259
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 259
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 259
+      }
+    },
+    "5": {
+      "frame": {
+        "x": 520,
+        "y": 283,
+        "w": 240,
+        "h": 259
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 259
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 259
+      }
+    }
+  },
+  "meta": {
+    "image": "waterfall-medium-v2.png",
+    "scale": "1",
+    "generator": "ImageGen; primary reference Dise\u00f1os de puentes, cascadas y r\u00edos.png"
+  }
+}

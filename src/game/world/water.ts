@@ -12,10 +12,10 @@ export class WaterLayer {
   this.habitat=new WaterHabitat(masks);this.createDepthLayers();
   this.ripples=scene.add.graphics().setDepth(-12);
   for(const [index,fall] of waterfalls.entries()){
-   const kind=index===0?'main':'small',key=`waterfall-${kind}`,sheet=scene.textures.get(key),f=sheet.get('0'),frames=kind==='main'?8:6;
+   const kind=index===0||index===3?'medium':'small',key=`waterfall-${kind}`,sheet=scene.textures.get(key),f=sheet.get('0'),frames=6;
    const scale=fall.height*2/f.height;
    // Uniform scale preserves the generated waterfall's rocks, core and splash proportions.
-   const anim=`river-craft-${kind}-flow`;if(!scene.anims.exists(anim))scene.anims.create({key:anim,frames:Array.from({length:frames},(_,frame)=>({key,frame:String(frame)})),frameRate:kind==='main'?8:7,repeat:-1});
+   const anim=`river-craft-${kind}-flow`;if(!scene.anims.exists(anim))scene.anims.create({key:anim,frames:Array.from({length:frames},(_,frame)=>({key,frame:String(frame)})),frameRate:7,repeat:-1});
    this.falls.push(scene.add.sprite(...fall.position,key,'0').setOrigin(.5,0).setScale(scale).setDepth(-7.8).play({key:anim,startFrame:index%frames}));
   }
  }
@@ -72,6 +72,6 @@ export class WaterLayer {
   }
   for(const f of this.falls){const visible=Phaser.Geom.Rectangle.Overlaps(view,f.getBounds());f.setVisible(visible);if(visible)f.anims.resume();else f.anims.pause();}
  }
- get diagnostics(){return {mode:'reference-layered-pixel-art',shader:false,waterfalls:this.falls.length,fallFrames:this.falls.map(f=>String(f.frame.name)),mainFrames:8,smallFrames:6,depthLayers:this.layers.length,visibleLayers:this.layers.filter(i=>i.visible).length,estimatedTextureMiB:Math.round(this.textureBytes/1048576*10)/10};}
+ get diagnostics(){return {mode:'reference-layered-pixel-art',shader:false,waterfalls:this.falls.length,fallFrames:this.falls.map(f=>String(f.frame.name)),mediumFrames:6,smallFrames:6,depthLayers:this.layers.length,visibleLayers:this.layers.filter(i=>i.visible).length,estimatedTextureMiB:Math.round(this.textureBytes/1048576*10)/10};}
  get animationFrame(){return this.ticks;}
 }

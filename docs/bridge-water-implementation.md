@@ -1,3 +1,5 @@
+> Documento histórico de la capa 2.8. La implementación vigente es la capa 2.9, descrita en mini-crossings-implementation.md.
+
 # Puentes, cascadas y agua — Capa 2.8
 
 La guía aportada por el usuario se utilizó como referencia principal en seis generaciones de ImageGen integrada. Inventario y prompts exactos: `river-assets-prompts.md`. Se mantiene el mapa, césped, jardín, personajes, UI, sorpresa, tareas, Supabase y progreso offline.

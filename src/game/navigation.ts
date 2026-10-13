@@ -16,6 +16,7 @@ export class NavigationGrid {
   private cols: number;
   private rows: number;
   private cells: Uint8Array;
+  private centers:Float64Array;
   private edges=new Map<number,boolean>();
   private obstacleBuckets=new Map<string,Polygon[]>();
   private bounds=new Map<Polygon,{minX:number;maxX:number;minY:number;maxY:number}>();
@@ -28,6 +29,20 @@ export class NavigationGrid {
 
     this.cols = Math.ceil(data.width / this.cell); this.rows = Math.ceil(data.height / this.cell);
     this.cells = new Uint8Array(this.cols * this.rows);
+    this.centers=new Float64Array(this.cells.length*2);
+    // Preserve the coarse world grid, but align nodes inside narrow crossing rectangles
+    // to their centerline. Every connecting edge still proves continuous footprint clearance.
+    const crossings=[...(data.bridges??[]),...(data.passages??[])].filter(p=>p.length===4&&Math.hypot(p[0][0]-p[3][0],p[0][1]-p[3][1])<this.cell*3);
+    for(let i=0;i<this.cells.length;i++){
+      let x=(i%this.cols+.5)*this.cell,y=(Math.floor(i/this.cols)+.5)*this.cell;
+      for(const p of crossings){if(!inside([x,y],p))continue;
+        const ax=(p[0][0]+p[3][0])/2,ay=(p[0][1]+p[3][1])/2,bx=(p[1][0]+p[2][0])/2,by=(p[1][1]+p[2][1])/2;
+        const dx=bx-ax,dy=by-ay,t=Math.max(0,Math.min(1,((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy)));
+        const px=ax+dx*t,py=ay+dy*t;if(this.canWalk(px,py)){x=px;y=py;}break;
+      }
+      this.centers[i*2]=x;this.centers[i*2+1]=y;
+    }
+
     for (let y = 0; y < this.rows; y++) for (let x = 0; x < this.cols; x++) this.cells[y * this.cols + x] = this.canWalk(...this.center(y * this.cols + x)) ? 1 : 0;
   }
   canWalk(x: number, y: number): boolean {
@@ -62,7 +77,7 @@ export class NavigationGrid {
     return true;
   }
 
-  private center(index: number): [number, number] { return [(index % this.cols + .5) * this.cell, (Math.floor(index / this.cols) + .5) * this.cell]; }
+  private center(index: number): [number, number] { return [this.centers[index*2],this.centers[index*2+1]]; }
   nearest(point: Point): [number, number] {
     if (this.canWalk(...point)) return [point[0], point[1]];
     let best = -1, distance = Infinity;
@@ -102,14 +117,14 @@ export class NavigationGrid {
       }
       visited.add(current);
       const cx = current % this.cols, cy = Math.floor(current / this.cols);
-      for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1,-1], [-1,1], [1,-1], [1,1]]) {
         const x = cx + dx, y = cy + dy, next = y * this.cols + x;
         if (x < 0 || y < 0 || x >= this.cols || y >= this.rows || visited.has(next) || !this.cells[next]) continue;
-        if (dx && dy && (!this.cells[cy * this.cols + x] || !this.cells[y * this.cols + cx])) continue;
+        // The continuous footprint check below also guards diagonal corner cutting.
 
         const edgeKey=Math.min(current,next)*this.cells.length+Math.max(current,next);
         let safe=this.edges.get(edgeKey);if(safe===undefined){safe=this.segment(this.center(current),this.center(next));this.edges.set(edgeKey,safe);}if(!safe)continue;
-        const cost = costs.get(current)! + this.cell * (dx && dy ? Math.SQRT2 : 1);
+        const cost = costs.get(current)! + Math.hypot(this.center(next)[0]-this.center(current)[0],this.center(next)[1]-this.center(current)[1]);
         if (cost >= (costs.get(next) ?? Infinity)) continue;
         costs.set(next, cost); previous.set(next, current); push(next,cost+heuristic(next));
       }

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { MAP, mainland, islands, rawWater, cliffFaces, roads, ramps, type Crossing } from './mapConfig';
+import { MAP, mainland, islands, rawWater, cliffFaces, roads, ramps } from './mapConfig';
 import { zones } from './zones';
 import type { Polygon } from '../navigation';
 const W=MAP.width/MAP.pixel,H=MAP.height/MAP.pixel;
@@ -50,7 +50,7 @@ export class TerrainLayers {
  readonly masks=createMasks(); readonly objects:Phaser.GameObjects.Image[]=[];
  constructor(private scene:Phaser.Scene){
   this.chunks('water',-30);this.chunks('terrain',-20);this.chunks('surfaces',-18);this.chunks('paths',-17);this.chunks('topography',-16);
-  for(const crossing of ramps)this.crossing(crossing);
+
  }
  private chunks(layer:'water'|'terrain'|'surfaces'|'paths'|'topography',depth:number){
   const {land,water,surfaces,paths,cliffs}=this.masks,n=MAP.chunk/MAP.pixel;
@@ -60,6 +60,8 @@ export class TerrainLayers {
     const gx=cx+x,gy=cy+y,i=(gy*W+gx)*4,j=(y*n+x)*4;if(gx>=W||gy>=H)continue;
     const isWater=water[i+3]>127,isLand=land[i+3]>127&&!isWater,id=layer==='paths'?paths[i]:surfaces[i];
     if(layer==='water'?!isWater:layer==='terrain'?!isLand:layer==='surfaces'?!isLand||!id:layer==='paths'?!isLand||paths[i+3]<128:cliffs[i+3]<128)continue;
+    // The stream stays visible below compact falls instead of exposing the old tall cliff wall.
+    if(layer==='topography'&&isWater)continue;
     filled=true;const h=hash(gx,gy),patch=patchNoise(gx,gy);
     const material=layer==='water'?8:layer==='topography'?7:layer==='terrain'?0:id;
     const colors=palette[material],blend=patch*(colors.length-1),low=Math.floor(blend),mix=blend-low;
@@ -86,17 +88,6 @@ export class TerrainLayers {
    if(this.scene.textures.exists(key))this.scene.textures.remove(key);this.scene.textures.addCanvas(key,c);
    const view=this.scene.add.image(cx*2,cy*2,key).setOrigin(0).setScale(2).setDepth(depth);this.objects.push(view);
   }
- }
- private crossing(b:Crossing){
-  const dx=b.to[0]-b.from[0],dy=b.to[1]-b.from[1],length=Math.hypot(dx,dy)/2+12;
-  const width=Math.hypot(b.shape[0][0]-b.shape[3][0],b.shape[0][1]-b.shape[3][1])/2;
-  const c=canvas(Math.ceil(length)+8,Math.ceil(width)+8),ctx=c.getContext('2d')!;ctx.imageSmoothingEnabled=false;
-  ctx.fillStyle='#453e30';ctx.fillRect(2,5,length+3,width+2);
-  const ramp=b.kind==='ramp';
-  for(let x=4;x<length+4;x+=4){ctx.fillStyle=ramp?'#b5ad90':x%8?'#a66b35':'#be8340';ctx.fillRect(x,4,3,width);ctx.fillStyle=ramp?'#d0c5a0':'#dfaa60';ctx.fillRect(x,4,1,width);ctx.fillStyle='#654c30';ctx.fillRect(x,width+2,3,2);}
-  if(!ramp){ctx.fillStyle='#714724';ctx.fillRect(2,1,length+4,2);ctx.fillRect(2,width+3,length+4,2);ctx.fillStyle='#dea85d';ctx.fillRect(2,1,length+4,1);for(let x=4;x<length+3;x+=16){ctx.fillStyle='#553b26';ctx.fillRect(x,0,3,7);ctx.fillRect(x,width+1,3,7);ctx.fillStyle='#d5a25e';ctx.fillRect(x,0,3,2);}}
-  const key=`phase1-crossing-${b.id}`;if(this.scene.textures.exists(key))this.scene.textures.remove(key);this.scene.textures.addCanvas(key,c);
-  this.objects.push(this.scene.add.image((b.from[0]+b.to[0])/2,(b.from[1]+b.to[1])/2,key).setScale(2).setRotation(Math.atan2(dy,dx)).setDepth(-10));
  }
  cull(){const view=this.scene.cameras.main.worldView;for(const o of this.objects){const bounds=o.getBounds();o.setVisible(Phaser.Geom.Rectangle.Overlaps(view,bounds));}}
 }
