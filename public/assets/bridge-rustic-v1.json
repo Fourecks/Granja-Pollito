@@ -1,0 +1,129 @@
+{
+  "frames": {
+    "planks": {
+      "frame": {
+        "x": 8,
+        "y": 8,
+        "w": 240,
+        "h": 236
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 236
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 236
+      }
+    },
+    "post": {
+      "frame": {
+        "x": 264,
+        "y": 8,
+        "w": 207,
+        "h": 240
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 207,
+        "h": 240
+      },
+      "sourceSize": {
+        "w": 207,
+        "h": 240
+      }
+    },
+    "beam": {
+      "frame": {
+        "x": 520,
+        "y": 8,
+        "w": 240,
+        "h": 60
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 60
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 60
+      }
+    },
+    "stone": {
+      "frame": {
+        "x": 8,
+        "y": 264,
+        "w": 190,
+        "h": 240
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 190,
+        "h": 240
+      },
+      "sourceSize": {
+        "w": 190,
+        "h": 240
+      }
+    },
+    "landing": {
+      "frame": {
+        "x": 264,
+        "y": 264,
+        "w": 240,
+        "h": 165
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 165
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 165
+      }
+    },
+    "rope": {
+      "frame": {
+        "x": 520,
+        "y": 264,
+        "w": 240,
+        "h": 163
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 163
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 163
+      }
+    }
+  },
+  "meta": {
+    "image": "bridge-rustic-v1.png",
+    "scale": "1",
+    "generator": "ImageGen; primary reference Gu\u00eda Pixel Art de Puentes y Cascadas (1).png"
+  }
+}

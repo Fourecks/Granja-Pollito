@@ -48,3 +48,7 @@ Los prompts de producción y el inventario están en `docs/plaza-assets.md`.
 
 
 `public/assets/tulip-garden-atlas.png` y `.json`: atlas propio generado con ImageGen desde el catálogo original del jardín proporcionado por el usuario y el atlas de vegetación de Granja Pollito. Tulipanes y props coherentes, sin paquetes de terceros. Prompt y organización en `docs/world-phase-25.md`.
+
+## Puentes y agua — referencia propia (octubre 2026)
+
+Los seis atlases `bridge-{rustic,farm,large}-v1`, `waterfall-{main,small}-v1` y `water-depth-v1` fueron creados para este proyecto con ImageGen integrada usando la guía de puentes/cascadas aportada por el usuario como referencia principal. No se emplean paquetes de terceros. Inventario, prompts finales y preparación de sprites: `docs/river-assets-prompts.md`. La guía no se distribuye como asset de juego.

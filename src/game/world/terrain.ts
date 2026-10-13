@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { MAP, mainland, islands, rawWater, cliffFaces, roads, bridges, ramps, type Crossing } from './mapConfig';
+import { MAP, mainland, islands, rawWater, cliffFaces, roads, ramps, type Crossing } from './mapConfig';
 import { zones } from './zones';
 import type { Polygon } from '../navigation';
 const W=MAP.width/MAP.pixel,H=MAP.height/MAP.pixel;
@@ -50,7 +50,7 @@ export class TerrainLayers {
  readonly masks=createMasks(); readonly objects:Phaser.GameObjects.Image[]=[];
  constructor(private scene:Phaser.Scene){
   this.chunks('water',-30);this.chunks('terrain',-20);this.chunks('surfaces',-18);this.chunks('paths',-17);this.chunks('topography',-16);
-  for(const crossing of [...bridges,...ramps])this.crossing(crossing);
+  for(const crossing of ramps)this.crossing(crossing);
  }
  private chunks(layer:'water'|'terrain'|'surfaces'|'paths'|'topography',depth:number){
   const {land,water,surfaces,paths,cliffs}=this.masks,n=MAP.chunk/MAP.pixel;

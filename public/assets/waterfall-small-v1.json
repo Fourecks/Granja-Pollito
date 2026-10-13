@@ -1,0 +1,129 @@
+{
+  "frames": {
+    "0": {
+      "frame": {
+        "x": 8,
+        "y": 8,
+        "w": 240,
+        "h": 209
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 209
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 209
+      }
+    },
+    "1": {
+      "frame": {
+        "x": 264,
+        "y": 8,
+        "w": 240,
+        "h": 209
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 209
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 209
+      }
+    },
+    "2": {
+      "frame": {
+        "x": 520,
+        "y": 8,
+        "w": 240,
+        "h": 209
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 209
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 209
+      }
+    },
+    "3": {
+      "frame": {
+        "x": 8,
+        "y": 233,
+        "w": 240,
+        "h": 209
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 209
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 209
+      }
+    },
+    "4": {
+      "frame": {
+        "x": 264,
+        "y": 233,
+        "w": 240,
+        "h": 209
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 209
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 209
+      }
+    },
+    "5": {
+      "frame": {
+        "x": 520,
+        "y": 233,
+        "w": 240,
+        "h": 209
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 209
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 209
+      }
+    }
+  },
+  "meta": {
+    "image": "waterfall-small-v1.png",
+    "scale": "1",
+    "generator": "ImageGen; primary reference Gu\u00eda Pixel Art de Puentes y Cascadas (1).png"
+  }
+}

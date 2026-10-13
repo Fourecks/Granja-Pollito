@@ -9,6 +9,7 @@ import { NavigationGrid } from './navigation';
 import { MAP, SCALE } from './world/mapConfig';
 import { navigation } from './world/collisions';
 import { TerrainLayers } from './world/terrain';
+import { BridgeLayer } from './world/BridgeLayer';
 import { WaterLayer } from './world/water';
 import { VegetationLayer } from './world/vegetation';
 import { ActorGrassOcclusionLayer } from './world/actorGrassOcclusion';
@@ -20,13 +21,14 @@ import type { FarmRuntime } from './types';
 // Phase 2 adds nature above the unchanged foundation; existing task actors remain.
 export class ExteriorScene extends WorldScene {
  readonly wind=new WindSystem();
+ private bridges!:BridgeLayer;
  private actorGrass!:ActorGrassOcclusionLayer;
  private tulips!:TulipFieldLayer;private vegetation!:VegetationLayer;private terrain!:TerrainLayers;private water!:WaterLayer;private diagnosticAt=0;private entering=false;private celebration?:CelebrationEvent;
  constructor(runtime:FarmRuntime){super('Exterior',runtime);}
- preload(){this.load.image('actors','/assets/actors-v2.webp');this.load.atlas('vegetation','/assets/vegetation-atlas.png','/assets/vegetation-atlas.json');this.load.atlas('tulip-garden','/assets/tulip-garden-atlas.png','/assets/tulip-garden-atlas.json');this.load.atlas('tulip-flowers','/assets/tulip-flowers-v2.png','/assets/tulip-flowers-v2.json');}
+ preload(){for(const style of ['rustic','farm','large'])this.load.atlas(`bridge-${style}`,`/assets/bridge-${style}-v1.png`,`/assets/bridge-${style}-v1.json`);for(const kind of ['main','small'])this.load.atlas(`waterfall-${kind}`,`/assets/waterfall-${kind}-v1.png`,`/assets/waterfall-${kind}-v1.json`);this.load.atlas('water-depth-art','/assets/water-depth-v1.png','/assets/water-depth-v1.json');this.load.image('actors','/assets/actors-v2.webp');this.load.atlas('vegetation','/assets/vegetation-atlas.png','/assets/vegetation-atlas.json');this.load.atlas('tulip-garden','/assets/tulip-garden-atlas.png','/assets/tulip-garden-atlas.json');this.load.atlas('tulip-flowers','/assets/tulip-flowers-v2.png','/assets/tulip-flowers-v2.json');}
  create(){
   createFrames(this,true);
-  this.terrain=new TerrainLayers(this);this.water=new WaterLayer(this,this.terrain.masks);
+  this.terrain=new TerrainLayers(this);this.water=new WaterLayer(this,this.terrain.masks);this.bridges=new BridgeLayer(this,this.terrain.masks);
   this.vegetation=new VegetationLayer(this,this.terrain.masks,this.wind,this.water.habitat);
   this.nav=new NavigationGrid({...navigation,obstacles:[...navigation.obstacles,...this.vegetation.plan.obstacles]},7);
   const garden=createTulipFieldPlan(this.vegetation.plan,this.nav);
@@ -46,7 +48,7 @@ export class ExteriorScene extends WorldScene {
    hit.setInteractive(new Phaser.Geom.Polygon(z.shape.map(([x,y])=>({x:x-Math.min(...xs),y:y-Math.min(...ys)}))),Phaser.Geom.Polygon.Contains);
    hit.on('pointerup',()=>{if(!this.controls.moved)this.runtime.props.current.onSelect(z.legacyObject!);});
   }
-  this.game.canvas.dataset.mapVersion='phase-2.7-nature';this.game.canvas.dataset.mapSize=`${MAP.width}x${MAP.height}`;
+  this.game.canvas.dataset.mapVersion='phase-2.8-river-craft';this.game.canvas.dataset.mapSize=`${MAP.width}x${MAP.height}`;
   this.game.canvas.dataset.humanHeight=String(SCALE.humanHeight);
   this.events.once('shutdown',()=>{this.actors=[];});
   this.runtime.loading(false);camera.fadeIn(350);
@@ -66,9 +68,9 @@ export class ExteriorScene extends WorldScene {
  }
  update(time:number,delta:number){
   super.update(time,delta);this.celebration?.update(time,delta);if(!this.scene.isVisible())return;
-  this.terrain.cull();this.water.update(time);this.vegetation.update(time,delta);this.tulips.update(time);this.actorGrass.update(this.actors);
+  this.terrain.cull();this.water.update(time);this.bridges.update(time);this.vegetation.update(time,delta);this.tulips.update(time);this.actorGrass.update(this.actors);
   if(time-this.diagnosticAt>750){this.diagnosticAt=time;const c=this.cameras.main;
-   this.game.canvas.dataset.world=JSON.stringify({version:'phase-2.7-nature',renderer:this.game.renderer.type,vegetation:this.vegetation.diagnostics,tulipField:this.tulips.diagnostics,fps:Math.round(this.game.loop.actualFps),waterFrame:this.water.animationFrame,water:this.water.diagnostics,actorGrass:this.actorGrass.diagnostics,chunks:this.terrain.objects.length,visibleChunks:this.terrain.objects.filter(o=>o.visible).length,zoom:c.zoom,camera:[Math.round(c.worldView.x),Math.round(c.worldView.y),Math.round(c.worldView.width),Math.round(c.worldView.height)],actors:this.actors.map(a=>({id:a.id,x:Math.round(a.x),y:Math.round(a.y),state:a.state,route:a.route.length,walkable:a.nav.canWalk(a.x,a.y)}))});
+   this.game.canvas.dataset.world=JSON.stringify({version:'phase-2.8-river-craft',renderer:this.game.renderer.type,vegetation:this.vegetation.diagnostics,tulipField:this.tulips.diagnostics,fps:Math.round(this.game.loop.actualFps),waterFrame:this.water.animationFrame,water:this.water.diagnostics,bridges:this.bridges.diagnostics,actorGrass:this.actorGrass.diagnostics,chunks:this.terrain.objects.length,visibleChunks:this.terrain.objects.filter(o=>o.visible).length,zoom:c.zoom,camera:[Math.round(c.worldView.x),Math.round(c.worldView.y),Math.round(c.worldView.width),Math.round(c.worldView.height)],actors:this.actors.map(a=>({id:a.id,x:Math.round(a.x),y:Math.round(a.y),state:a.state,route:a.route.length,walkable:a.nav.canWalk(a.x,a.y)}))});
   }
  }
 }

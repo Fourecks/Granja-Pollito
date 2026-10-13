@@ -1,0 +1,169 @@
+{
+  "frames": {
+    "0": {
+      "frame": {
+        "x": 8,
+        "y": 8,
+        "w": 240,
+        "h": 314
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 314
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 314
+      }
+    },
+    "1": {
+      "frame": {
+        "x": 264,
+        "y": 8,
+        "w": 240,
+        "h": 314
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 314
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 314
+      }
+    },
+    "2": {
+      "frame": {
+        "x": 520,
+        "y": 8,
+        "w": 240,
+        "h": 314
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 314
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 314
+      }
+    },
+    "3": {
+      "frame": {
+        "x": 776,
+        "y": 8,
+        "w": 240,
+        "h": 314
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 314
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 314
+      }
+    },
+    "4": {
+      "frame": {
+        "x": 8,
+        "y": 338,
+        "w": 240,
+        "h": 314
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 314
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 314
+      }
+    },
+    "5": {
+      "frame": {
+        "x": 264,
+        "y": 338,
+        "w": 240,
+        "h": 314
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 314
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 314
+      }
+    },
+    "6": {
+      "frame": {
+        "x": 520,
+        "y": 338,
+        "w": 240,
+        "h": 314
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 314
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 314
+      }
+    },
+    "7": {
+      "frame": {
+        "x": 776,
+        "y": 338,
+        "w": 240,
+        "h": 314
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 240,
+        "h": 314
+      },
+      "sourceSize": {
+        "w": 240,
+        "h": 314
+      }
+    }
+  },
+  "meta": {
+    "image": "waterfall-main-v1.png",
+    "scale": "1",
+    "generator": "ImageGen; primary reference Gu\u00eda Pixel Art de Puentes y Cascadas (1).png"
+  }
+}

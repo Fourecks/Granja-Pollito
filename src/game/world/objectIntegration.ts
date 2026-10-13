@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { inside, type Polygon } from '../navigation';
 import { MAP } from './mapConfig';
 import type { WorldMasks } from './terrain';
 import { drawGrass } from './grassArt';
@@ -10,7 +11,7 @@ export class ObjectIntegrationLayer {
  private objects:Phaser.GameObjects.Image[]=[];
  private nextCull=0;
  readonly textureBytes:number;
- constructor(scene:Phaser.Scene,private masks:WorldMasks,anchors:readonly IntegrationAnchor[],key='object-integration'){
+ constructor(scene:Phaser.Scene,private masks:WorldMasks,anchors:readonly IntegrationAnchor[],key='object-integration',private excluded:readonly Polygon[]=[]){
   const canvas=document.createElement('canvas');canvas.width=CELL_W*COLUMNS;canvas.height=CELL_H*Math.max(1,Math.ceil(anchors.length/COLUMNS));
   const ctx=canvas.getContext('2d',{willReadFrequently:true})!;ctx.imageSmoothingEnabled=false;
   const placements:Array<{anchor:IntegrationAnchor;index:number}>=[];
@@ -60,6 +61,7 @@ export class ObjectIntegrationLayer {
   this.textureBytes=canvas.width*canvas.height*4+groundChunks.size*192*192*4;
  }
  private valid(x:number,y:number,_wet:boolean){
+  if(this.excluded.some(p=>inside([x,y],p)))return false;
   const gx=Math.floor(x/MAP.pixel),gy=Math.floor(y/MAP.pixel),width=MAP.width/MAP.pixel;
   if(gx<0||gy<0||gx>=width||gy>=MAP.height/MAP.pixel)return false;
   const i=(gy*width+gx)*4,m=this.masks;
