@@ -4,6 +4,7 @@ import { inside } from '../navigation';
 import type { WaterfallPlacement } from './waterfallGeometry';
 import type { WorldMasks } from './terrain';
 import { submergedRockColor } from './SubmergedCliffLayer';
+import { WaterfallFoamLayer } from './WaterfallFoamLayer';
 import { WaterHabitat } from './waterHabitat';
 export class WaterLayer {
  private ripples:Phaser.GameObjects.Graphics;private lastFrame=-1;
@@ -12,9 +13,11 @@ export class WaterLayer {
  private falls:Phaser.GameObjects.Sprite[]=[];private ticks=0;
  private rocks:Phaser.GameObjects.Image[]=[];
  private riverColors=new Uint8ClampedArray(1536*1024*3);
+ private foam:WaterfallFoamLayer;
  constructor(private scene:Phaser.Scene,private masks:WorldMasks,private submergedFade?:Float32Array){
   this.habitat=new WaterHabitat(masks);this.createDepthLayers();
   this.ripples=scene.add.graphics().setDepth(-12);
+  this.foam=new WaterfallFoamLayer(scene,masks);
   for(const [index,fall] of waterfalls.entries()){
    const kind=fall.kind,key=`waterfall-${kind}`,sheet=scene.textures.get(key),frames=6;
    const left=Math.floor((Math.min(...fall.flow.map(p=>p[0]))-fall.width-8)/2)*2,top=Math.floor((fall.position[1]-14)/2)*2;
@@ -98,6 +101,7 @@ export class WaterLayer {
   }
  }
  update(time:number){
+  this.foam.update(time,this.scene.cameras.main.worldView);
   if(time>=this.cullAt){this.cullAt=time+180;const view=this.scene.cameras.main.worldView;for(const image of [...this.layers,...this.rocks])image.setVisible(Phaser.Geom.Rectangle.Overlaps(view,image.getBounds()));}
   const frame=Math.floor(time/140);if(frame===this.lastFrame)return;this.lastFrame=frame;this.ticks++;
   const view=this.scene.cameras.main.worldView,w=MAP.width/2,mask=this.masks.water,g=this.ripples;g.clear();
@@ -107,20 +111,8 @@ export class WaterLayer {
    if(!inWater(px,py)||!inWater(px+18,py)||bridges.some(b=>inside([px,py],b.shape)))continue;
    g.fillStyle(index%3===0?0xabe6df:0x58c0d3,.28+(frame+index)%3*.06);g.fillRect(px,py,8+index%5*2,2);if(index%4===0)g.fillRect(px+4,py+4,6,2);
   }
-  // Tiny mask-clipped spray and broken foam rings, batched with existing surface highlights.
-  for(const [index,fall] of waterfalls.entries()){
-   const bx=fall.foot[0],by=fall.foot[1]+5;
-   if(!view.contains(bx,by))continue;
-   const radius=fall.width+2+(frame+index)%5;
-   for(let i=0;i<20;i++){const a=i*Math.PI/10,px=Math.round((bx+Math.cos(a)*radius)/2)*2,py=Math.round((by+Math.sin(a)*radius*.25)/2)*2;
-    if(inWater(px,py)){g.fillStyle(0xb8f4ed,.16);g.fillRect(px,py,i%3?2:4,2);}
-   }
-   for(let i=0;i<7;i++){const phase=(frame+i*3+index)%11,px=Math.round((bx+Math.sin(i*2.37+index)*fall.width*.65)/2)*2,py=by-8-Math.sin(phase/11*Math.PI)*8;
-    if(inWater(px,py)){g.fillStyle(i%2?0xe5ffff:0x89e1ef,.45);g.fillRect(px,Math.round(py/2)*2,2,2);}
-   }
-  }
   for(const f of this.falls){const visible=Phaser.Geom.Rectangle.Overlaps(view,f.getBounds());f.setVisible(visible);if(visible)f.anims.resume();else f.anims.pause();}
  }
- get diagnostics(){return {mode:'reference-layered-pixel-art',shader:false,waterfalls:this.falls.length,placements:waterfalls.map(f=>({id:f.id,cliff:f.cliffId,top:f.position,bottom:f.foot})),fallFrames:this.falls.map(f=>String(f.frame.name)),mediumFrames:6,smallFrames:6,depthLayers:this.layers.length,visibleLayers:this.layers.filter(i=>i.visible).length,estimatedTextureMiB:Math.round(this.textureBytes/1048576*10)/10};}
+ get diagnostics(){return {mode:'reference-layered-pixel-art',shader:false,foam:this.foam.diagnostics,waterfalls:this.falls.length,placements:waterfalls.map(f=>({id:f.id,cliff:f.cliffId,top:f.position,bottom:f.foot})),fallFrames:this.falls.map(f=>String(f.frame.name)),mediumFrames:6,smallFrames:6,depthLayers:this.layers.length,visibleLayers:this.layers.filter(i=>i.visible).length,estimatedTextureMiB:Math.round(this.textureBytes/1048576*10)/10};}
  get animationFrame(){return this.ticks;}
 }
