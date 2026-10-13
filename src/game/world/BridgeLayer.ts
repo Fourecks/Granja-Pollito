@@ -3,6 +3,7 @@ import { inside } from '../navigation';
 import { bridgePlans, bridgePoint, bridgeAtlas, type BridgePlan } from './bridgePlan';
 import { ObjectIntegrationLayer, type IntegrationAnchor } from './objectIntegration';
 import type { WorldMasks } from './terrain';
+import { cliffFaces } from './mapConfig';
 interface PixelSource {pixels:Uint8ClampedArray;width:number;height:number;}
 export class BridgeLayer {
  private objects:Phaser.GameObjects.Image[]=[];private integration:ObjectIntegrationLayer;private cullAt=0;private floorCount=0;private railCount=0;private postCount=0;
@@ -21,7 +22,7 @@ export class BridgeLayer {
     for(let i=0;i<=count;i++){
      const along=start+(end-start)*i/count,pos=bridgePoint(p,along,across),isEnd=i===0||i===count;
      if(i<count){const next=bridgePoint(p,start+(end-start)*(i+1)/count,across);const steps=Math.ceil(Math.hypot(next.x-pos.x,next.y-pos.y)/16);for(let k=0;k<steps;k++)this.rail(p,{x:pos.x+(next.x-pos.x)*k/steps,y:pos.y+(next.y-pos.y)*k/steps},{x:pos.x+(next.x-pos.x)*(k+1)/steps,y:pos.y+(next.y-pos.y)*(k+1)/steps});}
-     if(bridgePlans.some(other=>other!==p&&inside([pos.x,pos.y],other.crossing.shape)))continue;
+     if(cliffFaces.some(face=>inside([pos.x,pos.y],face))||bridgePlans.some(other=>other!==p&&inside([pos.x,pos.y],other.crossing.shape)))continue;
      const key='bridge-stone',f=scene.textures.get(key).get('post'),height=p.postHeight;
      const post=scene.add.image(Math.round(pos.x),Math.round(pos.y),key,'post').setOrigin(.5,.96).setScale(height/f.height).setDepth(pos.y+.12).setData('bridgePart','post');this.objects.push(post);this.postCount++;
      if(isEnd){anchors.push({id:`${p.crossing.id}-${side}-${i}`,x:pos.x,y:pos.y+2,depth:pos.y+.2,span:16,cover:7,kind:'plant'});
@@ -50,7 +51,8 @@ export class BridgeLayer {
   const xs=p.crossing.shape.map(v=>v[0]),ys=p.crossing.shape.map(v=>v[1]),left=Math.floor(Math.min(...xs))-3,top=Math.floor(Math.min(...ys))-3,w=Math.ceil(Math.max(...xs))-left+4,h=Math.ceil(Math.max(...ys))-top+8;
   const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d')!,data=ctx.createImageData(w,h);
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-   const wx=left+x,wy=top+y,isFloor=inside([wx,wy],p.crossing.shape),shadow=inside([wx-2,wy-5],p.crossing.shape);if(!isFloor&&!shadow)continue;
+   const wx=left+x,wy=top+y;if(cliffFaces.some(face=>inside([wx,wy],face)))continue;
+   const isFloor=inside([wx,wy],p.crossing.shape),shadow=inside([wx-2,wy-5],p.crossing.shape);if(!isFloor&&!shadow)continue;
    const j=(y*w+x)*4;if(!isFloor){data.data.set([32,43,37,72],j);continue;}
    const dx=wx-p.crossing.from[0],dy=wy-p.crossing.from[1],along=dx*p.ux+dy*p.uy,across=dx*p.nx+dy*p.ny;
    const stone=p.style==='stone'||p.style==='arched',seam=!stone&&((along+12)%9+9)%9<1,edge=Math.abs(across)>p.width/2-2;
@@ -65,7 +67,7 @@ export class BridgeLayer {
   const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d')!;ctx.imageSmoothingEnabled=false;
   const dx=b.x-a.x,dy=b.y-a.y,length=Math.hypot(dx,dy),steps=Math.ceil(length);
   for(const lift of lifts)for(let i=0;i<=steps;i++){
-   const t=i/steps;if(bridgePlans.some(other=>other!==p&&inside([a.x+dx*t,a.y+dy*t],other.crossing.shape)))continue;const sag=p.style==='rope'?Math.sin(t*Math.PI)*2:0,x=Math.round(a.x+dx*t-left),y=Math.round(a.y+dy*t-top-lift+sag);
+   const t=i/steps;if(cliffFaces.some(face=>inside([a.x+dx*t,a.y+dy*t],face))||bridgePlans.some(other=>other!==p&&inside([a.x+dx*t,a.y+dy*t],other.crossing.shape)))continue;const sag=p.style==='rope'?Math.sin(t*Math.PI)*2:0,x=Math.round(a.x+dx*t-left),y=Math.round(a.y+dy*t-top-lift+sag);
    if(p.style==='rope'||p.style==='rustic'){ctx.fillStyle='#6f4d26';ctx.fillRect(x,y,2,3);ctx.fillStyle='#e4c78e';ctx.fillRect(x,y,2,1);}
    else {const rgb=this.pixel(p,i,18,-14);ctx.fillStyle=`rgb(${rgb.join(',')})`;const arch=p.style==='arched'?Math.round(Math.sin(t*Math.PI)*4):0;ctx.fillRect(x,y-arch,2,4+arch);ctx.fillStyle='#b2ad91';ctx.fillRect(x,y-arch,2,1);if(i%19<4){ctx.fillStyle='#697845';ctx.fillRect(x,y-arch,2,1);}}
 

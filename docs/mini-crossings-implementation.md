@@ -1,3 +1,5 @@
+> Documento histórico de la capa 2.9. La supresión de paredes sobre agua y el tratamiento de rampas como puentes se corrigen en topography-restoration.md (capa 3.0).
+
 # Mini puentes y cascadas — capa 2.9
 
 Referencia objetivo: Diseños de puentes, cascadas y ríos.png. Se conservan ubicaciones, extremos, senderos y distribución del mapa.

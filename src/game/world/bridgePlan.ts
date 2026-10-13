@@ -1,4 +1,4 @@
-import { bridges, ramps, type Crossing } from './mapConfig';
+import { bridges, type Crossing } from './mapConfig';
 export type BridgeStyle='rustic'|'rope'|'stone'|'arched'|'footwalk';
 export interface BridgePlan {crossing:Crossing;style:BridgeStyle;length:number;width:number;ux:number;uy:number;nx:number;ny:number;postHeight:number;postSpacing:number;}
 const variants:Record<string,BridgeStyle>={
@@ -13,6 +13,6 @@ export function bridgePlan(crossing:Crossing):BridgePlan {
  const style=variants[crossing.id]??'stone';
  return {crossing,style,length,width,ux,uy,nx:-uy,ny:ux,postHeight:style==='footwalk'?0:style==='stone'||style==='arched'?14:20,postSpacing:140};
 }
-export const bridgePlans=[...bridges,...ramps].map(bridgePlan);
+export const bridgePlans=bridges.map(bridgePlan);
 export function bridgePoint(p:BridgePlan,along:number,across:number){return {x:p.crossing.from[0]+p.ux*along+p.nx*across,y:p.crossing.from[1]+p.uy*along+p.ny*across};}
 export function bridgeAtlas(p:BridgePlan){return p.style==='stone'||p.style==='arched'?'bridge-stone':'bridge-rustic';}

@@ -3,7 +3,7 @@ import { MAP, mainland, islands, rawWater, cliffFaces, roads, ramps } from './ma
 import { zones } from './zones';
 import type { Polygon } from '../navigation';
 const W=MAP.width/MAP.pixel,H=MAP.height/MAP.pixel;
-export interface WorldMasks { land:Uint8ClampedArray; water:Uint8ClampedArray; surfaces:Uint8ClampedArray; paths:Uint8ClampedArray; cliffs:Uint8ClampedArray }
+export interface WorldMasks { land:Uint8ClampedArray; water:Uint8ClampedArray; surfaces:Uint8ClampedArray; paths:Uint8ClampedArray; cliffs:Uint8ClampedArray; cliffWalls?:Uint8ClampedArray }
 function canvas(w:number,h:number){const c=document.createElement('canvas');c.width=w;c.height=h;return c;}
 function fill(ctx:CanvasRenderingContext2D,shape:Polygon,color:string){ctx.fillStyle=color;ctx.beginPath();shape.forEach(([x,y],i)=>i?ctx.lineTo(x/MAP.pixel,y/MAP.pixel):ctx.moveTo(x/MAP.pixel,y/MAP.pixel));ctx.closePath();ctx.fill();}
 function mask(draw:(ctx:CanvasRenderingContext2D)=>void){const c=canvas(W,H),ctx=c.getContext('2d',{willReadFrequently:true})!;draw(ctx);return ctx.getImageData(0,0,W,H).data;}
@@ -11,6 +11,7 @@ export function createMasks():WorldMasks {
  const land=mask(ctx=>{fill(ctx,mainland,'#ffffff');for(const i of islands)fill(ctx,i.shape,'#ffffff');});
  const water=mask(ctx=>{for(const w of rawWater)fill(ctx,w,'#ffffff');ctx.globalCompositeOperation='destination-out';for(const i of islands)fill(ctx,i.shape,'#ffffff');});
  const cliffs=mask(ctx=>{for(const c of cliffFaces)fill(ctx,c,'#ffffff');ctx.globalCompositeOperation='destination-out';for(const r of ramps)fill(ctx,r.shape,'#ffffff');});
+ const cliffWalls=mask(ctx=>{for(const c of cliffFaces)fill(ctx,c,'#ffffff');});
  // Binary stamps prevent antialiased material IDs from turning parcel edges blue.
  const surfaces=new Uint8ClampedArray(W*H*4),paths=new Uint8ClampedArray(W*H*4),stampCanvas=canvas(W,H),stampContext=stampCanvas.getContext('2d',{willReadFrequently:true})!;
  const stamp=(id:number,draw:(ctx:CanvasRenderingContext2D)=>void,target=surfaces)=>{
@@ -23,7 +24,7 @@ export function createMasks():WorldMasks {
  // Paths end at the plaza's paving rather than painting over its centre.
  for(let i=0;i<paths.length;i+=4)if(surfaces[i]===5)paths[i+3]=0;
  stamp(5,ctx=>fill(ctx,zones.find(z=>z.id==='centralPlaza')!.shape,'#fff'));
- return {land,water,cliffs,surfaces,paths};
+ return {land,water,cliffs,cliffWalls,surfaces,paths};
 }
 const hash=(x:number,y:number,seed=0)=>{let n=Math.imul(x+seed*109,374761393)^Math.imul(y,668265263);n=Math.imul(n^(n>>>13),1274126177);return (n^(n>>>16))>>>0;};
 function patchNoise(x:number,y:number){
@@ -60,8 +61,6 @@ export class TerrainLayers {
     const gx=cx+x,gy=cy+y,i=(gy*W+gx)*4,j=(y*n+x)*4;if(gx>=W||gy>=H)continue;
     const isWater=water[i+3]>127,isLand=land[i+3]>127&&!isWater,id=layer==='paths'?paths[i]:surfaces[i];
     if(layer==='water'?!isWater:layer==='terrain'?!isLand:layer==='surfaces'?!isLand||!id:layer==='paths'?!isLand||paths[i+3]<128:cliffs[i+3]<128)continue;
-    // The stream stays visible below compact falls instead of exposing the old tall cliff wall.
-    if(layer==='topography'&&isWater)continue;
     filled=true;const h=hash(gx,gy),patch=patchNoise(gx,gy);
     const material=layer==='water'?8:layer==='topography'?7:layer==='terrain'?0:id;
     const colors=palette[material],blend=patch*(colors.length-1),low=Math.floor(blend),mix=blend-low;
@@ -78,6 +77,9 @@ export class TerrainLayers {
     if(material===5){const row=Math.floor(gy/7),seam=gy%7===0||(gx+(row%2)*6)%13===0;color=color.map(v=>v+(seam?-30:h%9===0?7:0));}
     if(material===7){const wave=Math.floor(Math.sin(gx/8)*2+Math.sin(gx/19)*3),row=Math.floor((gy+wave)/14),edge=(gx+(row%2)*11+Math.floor(Math.sin(gy/6)*2))%23,seam=(gy+wave)%14===0||edge===0;
      color=color.map(v=>v+(seam?-34:edge<3?17:edge>18?-19:0));if(h%29===0)color=color.map(v=>v-11);
+     const above=i-W*4,below=i+W*4;
+     if(above>=0&&cliffs[above+3]<128&&land[above+3]>127&&!water[above+3]&&[0,9,10,11].includes(surfaces[above])&&h%3)color=[103,133,57];
+     if(below<cliffs.length&&cliffs[below+3]<128)color=color.map(v=>Math.round(v*.79));
     }
     // Shallow shoreline color and broken foam remain on the actual water layer.
     if(material===8){let shore=false;for(const offset of [-W*3,W*3,-3,3]){const v=i+offset*4;if(v>=0&&v<water.length&&water[v+3]<128)shore=true;}if(shore)color=h%5===0?[179,224,210]:[58,159,173];else if((gx+gy*2)%41===0&&h%4===0)color=[34,149,178];}

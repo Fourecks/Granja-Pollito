@@ -10,4 +10,4 @@ for(const p of bridgePlans){assert(p.width>=22-1e-8&&p.width<=36+1e-8);const rou
 }
 let forbidden=0;for(let y=0;y<2048;y+=14)for(let x=0;x<3072;x+=14){if(navigation.water.some(p=>inside([x,y],p))&&!navigation.waterIslands.some(p=>inside([x,y],p))&&!navigation.bridges.some(p=>inside([x,y],p))&&!navigation.passages.some(p=>inside([x,y],p))){assert(!nav.canWalk(x,y),'Land actors must not use water as shortcuts');forbidden++;}}
 for(const [kind,count] of [['medium',6],['small',6]]){const atlas=JSON.parse(fs.readFileSync(`public/assets/waterfall-${kind}-v2.json`));assert.equal(Object.keys(atlas.frames).length,count);const first=atlas.frames['0'].frame;for(const f of Object.values(atlas.frames)){assert.equal(f.frame.w,first.w);assert.equal(f.frame.h,first.h);}}
-assert.equal(waterfalls.length,4);console.log(`OK: five bridge styles, all eighteen authored crossings crossable, ${forbidden} water samples forbidden, fixed-size 6/6-frame waterfall atlases.`);
+assert.equal(waterfalls.length,4);console.log(`OK: five bridge styles, all ten authored bridges crossable, ${forbidden} water samples forbidden, fixed-size 6/6-frame waterfall atlases.`);

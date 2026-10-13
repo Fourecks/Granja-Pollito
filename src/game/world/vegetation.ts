@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { MAP, waterfalls } from './mapConfig';
+import { MAP, waterfalls, ribbon } from './mapConfig';
+import { inside } from '../navigation';
 import type { WorldMasks } from './terrain';
 import { WaterHabitat } from './waterHabitat';
 import { ObjectIntegrationLayer } from './objectIntegration';
@@ -22,8 +23,8 @@ export class VegetationLayer {
  private flowers:Plant[]=[];private blossoms:Plant[]=[];private trees:Plant[]=[];
  private nextCull=0;private nextMote=0;private twilight=false;
  constructor(private scene:Phaser.Scene,masks:WorldMasks,readonly wind:WindSystem,habitat:WaterHabitat){
-  const shore=habitat.placeTallReeds(this.visual.plants);this.shore={relocated:shore.relocated,removed:shore.removed};const fallAreas=waterfalls.map((fall,i)=>{const frame=scene.textures.get(i===0||i===3?'waterfall-medium':'waterfall-small').get('0');return {x:fall.position[0],top:fall.position[1],bottom:fall.position[1]+fall.height*2,width:frame.width/frame.height*fall.height*2};});
-  this.visual.plants=shore.plants.map(p=>['WATER_GRASS','GRASS_TALL','WEEDS_TALL'].includes(p.name)&&fallAreas.some(f=>Math.abs(p.x-f.x)<f.width/2&&p.y>f.top&&p.y<f.bottom-16)?{...p,ground:true}:p);
+  const shore=habitat.placeTallReeds(this.visual.plants);this.shore={relocated:shore.relocated,removed:shore.removed};const fallAreas=waterfalls.map(fall=>({shape:ribbon(fall.flow,fall.width),top:fall.position[1],bottom:fall.foot[1]}));
+  this.visual.plants=shore.plants.map(p=>['WATER_GRASS','GRASS_TALL','WEEDS_TALL'].includes(p.name)&&fallAreas.some(f=>inside([p.x,p.y],f.shape)&&p.y>f.top&&p.y<f.bottom-12)?{...p,ground:true}:p);
   this.microGrass=new MicroGrassLayer(scene,masks,this.plan,this.wind);
   const sheet=scene.textures.get('vegetation');
   const source=sheet.getSourceImage() as HTMLImageElement;

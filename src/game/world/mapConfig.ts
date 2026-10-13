@@ -1,3 +1,4 @@
+import { placeWaterfalls } from './waterfallGeometry';
 import { corridor, type Point, type Polygon } from '../navigation';
 // Author coordinates follow the 1536 × 1024 master plan; one art pixel = two world units.
 export const MAP = { width: 3072, height: 2048, pixel: 2, chunk: 256, navigationCell: 16 };
@@ -55,7 +56,7 @@ export const rawWater = [sea,lake,...rivers.map(r=>ribbon(r.line,r.width*2)),...
 export interface Crossing {id:string; shape:Polygon; from:Point; to:Point; kind:'bridge'|'ramp'|'pier'}
 const crossing=(id:string,a:Point,b:Point,width:number,kind:Crossing['kind']='bridge'):Crossing=>{
  const from=point(...a),to=point(...b),length=Math.hypot(to[0]-from[0],to[1]-from[1]),dx=(to[0]-from[0])/length*12,dy=(to[1]-from[1])/length*12;
- return {id,shape:corridor([[from[0]-dx,from[1]-dy],[to[0]+dx,to[1]+dy]],width)[0],from,to,kind};
+ return {id,shape:corridor([[from[0]-dx,from[1]-dy],[to[0]+dx,to[1]+dy]],kind==='ramp'?width*2:width)[0],from,to,kind};
 };
 export const bridges = [
  crossing('north-bridge',[653,155],[707,231],15),
@@ -85,13 +86,8 @@ export const cliffFaces = cliffs.map(c=>{
  const lower=c.line.map(([x,y],i)=>{const edge=Math.min(atBorder(c.line[0])?Infinity:distance[i],atBorder(c.line[c.line.length-1])?Infinity:total-distance[i]);const t=Math.min(1,edge/70);return [x,y+c.height*2*t*t*(3-2*t)] as Point;});
  return [...c.line,...lower.reverse()];
 });
-export const ramps = [crossing('north-steps',[737,184],[740,123],15,'ramp'),crossing('forest-pass',[986,73],[991,131],12,'ramp'),crossing('west-pass',[390,73],[405,132],11,'ramp'),crossing('coop-steps',[466,478],[484,527],12,'ramp'),crossing('home-steps',[964,623],[983,678],12,'ramp'),crossing('beach-west-steps',[365,822],[350,883],11,'ramp'),crossing('beach-east-steps',[505,845],[506,915],18,'ramp'),crossing('pier-steps',[1400,775],[1370,830],13,'ramp')];
-export const waterfalls = [
- {id:'north-falls',position:point(565,43),width:28,height:34},
- {id:'west-falls',position:point(157,363),width:20,height:23},
- {id:'east-falls',position:point(1474,487),width:20,height:23},
- {id:'south-falls',position:point(889,799),width:23,height:29},
-];
+export const ramps = [crossing('north-steps',[737,184],[740,123],16,'ramp'),crossing('forest-pass',[986,73],[991,131],20,'ramp'),crossing('west-pass',[390,73],[405,132],18,'ramp'),crossing('coop-steps',[466,478],[484,527],15,'ramp'),crossing('home-steps',[964,623],[983,678],15,'ramp'),crossing('beach-west-steps',[365,822],[350,883],16,'ramp'),crossing('beach-east-steps',[505,845],[506,915],17,'ramp'),crossing('pier-steps',[1400,775],[1370,830],17,'ramp')];
+export const waterfalls = placeWaterfalls(rivers,cliffs,cliffFaces);
 export interface Road {id:string; line:Polygon; surface:Polygon[]; width:number; secondary?:boolean}
 // Author crossings as straight deck segments with aligned bank approaches. Curves start on dry land.
 function roadLine(vertices:Polygon):Polygon {
