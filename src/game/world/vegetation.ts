@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { MAP } from './mapConfig';
 import type { WorldMasks } from './terrain';
+import { WaterHabitat } from './waterHabitat';
 import { ObjectIntegrationLayer } from './objectIntegration';
 import { isTree } from './vegetationPolish';
 import { MicroGrassLayer } from './microGrass';
@@ -15,11 +16,13 @@ export class VegetationLayer {
  readonly objects:Phaser.GameObjects.Image[]=[];
  private tall:Array<{sprite:Phaser.GameObjects.Image;plant:Plant}>=[];
  private microGrass:MicroGrassLayer;private integration:ObjectIntegrationLayer;
+ private shore:{relocated:number;removed:number};
  private windPlants:Array<{sprite:Phaser.GameObjects.Image;family:WindFamily;variation:WindVariation;amplitude:number}>=[];
  private butterflies:Moving[]=[];private motes:Moving[]=[];private fireflies:Moving[]=[];
  private flowers:Plant[]=[];private blossoms:Plant[]=[];private trees:Plant[]=[];
  private nextCull=0;private nextMote=0;private twilight=false;
- constructor(private scene:Phaser.Scene,masks:WorldMasks,readonly wind:WindSystem){
+ constructor(private scene:Phaser.Scene,masks:WorldMasks,readonly wind:WindSystem,habitat:WaterHabitat){
+  const shore=habitat.placeTallReeds(this.visual.plants);this.shore={relocated:shore.relocated,removed:shore.removed};this.visual.plants=shore.plants;
   this.microGrass=new MicroGrassLayer(scene,masks,this.plan,this.wind);
   const sheet=scene.textures.get('vegetation');
   const source=sheet.getSourceImage() as HTMLImageElement;
@@ -40,7 +43,7 @@ export class VegetationLayer {
    if(flowerSway)this.windPlants.push({sprite,family:'flowers',variation:this.wind.variation(p.x,p.y),amplitude:.025});
    if(p.name.startsWith('BAMBOO')&&this.windPlants.filter(o=>o.family==='bamboo').length<24)this.windPlants.push({sprite,family:'bamboo',variation:this.wind.variation(p.x,p.y),amplitude:.014});
   }
-  this.integration=new ObjectIntegrationLayer(scene,masks,this.visual.plants.filter(p=>(p.solid||p.name.includes('ROCK')||p.name.includes('LOG')||p.name==='BRANCHES'||p.name.includes('FLOWER')||p.name.includes('BUSH')||p.name.startsWith('BAMBOO')||p.name.startsWith('REEDS')||p.name==='CATTAILS')).map((p,i)=>({id:`vegetation-${i}`,x:p.x,y:p.y+p.height*.04,depth:p.ground?-8:p.y,span:p.drawWidth*(isTree(p)?.32:.8),cover:Math.min(10,p.height*.2),wet:p.biome==='shore'})));
+  this.integration=new ObjectIntegrationLayer(scene,masks,this.visual.plants.filter(p=>(p.solid||p.name.includes('ROCK')||p.name.includes('LOG')||p.name==='BRANCHES'||p.name.includes('FLOWER')||p.name.includes('BUSH')||p.name.startsWith('BAMBOO')||p.name.startsWith('REEDS')||p.name==='CATTAILS'||p.name==='GRASS_TALL'||p.name==='WEEDS_TALL'||p.name==='MUSHROOM_CLUSTER'||isTree(p))).map((p,i)=>({id:`vegetation-${i}`,x:p.x,y:p.y+p.height*.04,depth:p.ground?-8:p.y,span:p.drawWidth*(isTree(p)?.60:.85),cover:Math.min(16,p.height*.28),kind:isTree(p)?'tree' as const:p.name.includes('ROCK')?'rock' as const:p.name.includes('LOG')||p.name==='TREE_STUMP'?'wood' as const:p.name.includes('FLOWER')?'flower' as const:'plant' as const,wet:p.biome==='shore'})));
   // Bake small non-blocking detail into transparent 256-world-unit chunks.
   for(let y=0;y<ground.height;y+=128)for(let x=0;x<ground.width;x+=128){
    const c=document.createElement('canvas');c.width=c.height=128;const cc=c.getContext('2d')!;cc.drawImage(ground,x,y,128,128,0,0,128,128);
@@ -81,5 +84,6 @@ export class VegetationLayer {
   }
   for(const m of this.fireflies){const visible=this.twilight&&view.contains(m.home.x,m.home.y);m.sprite.setVisible(visible);if(visible)m.sprite.setPosition(m.home.x+Math.sin(time/1700+m.phase)*20,m.home.y-18+Math.cos(time/2100+m.phase)*12).setAlpha(.3+.5*(1+Math.sin(time/650+m.phase))/2).setDepth(m.home.y+25);}
  }
- get diagnostics(){return {integration:this.integration.diagnostics,plants:this.plan.plants.length,displayPlants:this.visual.plants.length,polish:{deadwoodReduced:this.visual.deadwoodReduced,flowersReduced:this.visual.flowersReduced,shoreReduced:this.visual.shoreReduced,treeSilhouettes:this.visual.treeSilhouettes},occupancy:{structural:this.visual.structuralCount,suppressed:this.visual.suppressed,merged:this.visual.merged},solids:this.plan.obstacles.length,sprites:this.tall.length,visible:this.objects.filter(o=>o.visible).length,butterflies:this.butterflies.filter(m=>m.sprite.visible).length,motes:this.motes.filter(m=>m.sprite.active).length,fireflies:this.fireflies.filter(m=>m.sprite.visible).length,sway:this.windPlants.length,microGrass:this.microGrass.diagnostics,biomes:Object.fromEntries(['north','panda','coast','shore','garden','landmark'].map(b=>[b,this.plan.plants.filter(p=>p.biome===b).length]))};}
+ get displayPlants(){return this.visual.plants;}
+ get diagnostics(){return {shore:this.shore,integration:this.integration.diagnostics,plants:this.plan.plants.length,displayPlants:this.visual.plants.length,polish:{deadwoodReduced:this.visual.deadwoodReduced,flowersReduced:this.visual.flowersReduced,shoreReduced:this.visual.shoreReduced,treeSilhouettes:this.visual.treeSilhouettes},occupancy:{structural:this.visual.structuralCount,suppressed:this.visual.suppressed,merged:this.visual.merged},solids:this.plan.obstacles.length,sprites:this.tall.length,visible:this.objects.filter(o=>o.visible).length,butterflies:this.butterflies.filter(m=>m.sprite.visible).length,motes:this.motes.filter(m=>m.sprite.active).length,fireflies:this.fireflies.filter(m=>m.sprite.visible).length,sway:this.windPlants.length,microGrass:this.microGrass.diagnostics,biomes:Object.fromEntries(['north','panda','coast','shore','garden','landmark'].map(b=>[b,this.plan.plants.filter(p=>p.biome===b).length]))};}
 }

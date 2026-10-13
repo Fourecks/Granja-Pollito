@@ -1,4 +1,5 @@
-import { polishVegetation } from './vegetationPolish';
+import { naturalHeight } from './naturalScale';
+import { isTree, polishVegetation } from './vegetationPolish';
 import atlas from '../../../public/assets/vegetation-atlas.json';
 import { footprint, type Plant, type VegetationPlan } from './vegetationPlan';
 export interface OccupiedArea {left:number;right:number;top:number;bottom:number;}
@@ -8,7 +9,7 @@ export function overlaps(a:OccupiedArea,b:OccupiedArea,gap=0){return a.left<b.ri
 const union=(a:OccupiedArea,b:OccupiedArea):OccupiedArea=>({left:Math.min(a.left,b.left),right:Math.max(a.right,b.right),top:Math.min(a.top,b.top),bottom:Math.max(a.bottom,b.bottom)});
 const rockBody=(members:Plant[])=>members.map(p=>{const f=frames[p.name].frame,w=p.height*f.w/f.h;return {left:p.x-w*.47,right:p.x+w*.47,top:p.y-p.height*.90,bottom:p.y+3};}).reduce(union);
 const physical=(p:Plant):OccupiedArea=>{const f=footprint(p);return {left:Math.min(...f.map(p=>p[0])),right:Math.max(...f.map(p=>p[0])),top:Math.min(...f.map(p=>p[1])),bottom:Math.max(...f.map(p=>p[1]))};};
-export function structural(p:Plant){return p.solid||p.name.startsWith('BUSH_')||p.name==='ROCK_MEDIUM'||p.name==='BAMBOO_SMALL';}
+export function structural(p:Plant){return p.solid||isTree({...p,drawWidth:p.width})||p.name.startsWith('BUSH_')||p.name==='ROCK_MEDIUM'||p.name==='BAMBOO_SMALL';}
 /** Display occupancy is independent of navigation: all original collision polygons survive. */
 export function resolveVegetationOccupancy(plan:VegetationPlan){
  const solids=plan.plants.filter(p=>p.solid),groups:Array<{members:Plant[];area:OccupiedArea}>=[];
@@ -23,7 +24,7 @@ export function resolveVegetationOccupancy(plan:VegetationPlan){
   const name=group.members.length>1&&group.members.every(p=>p.name.includes('ROCK'))?'ROCK_CLUSTER':primary.name;
   const frame=frames[name].frame;
   // A reserved collision union is not a request to stretch/enlarge its visual model.
-  const height=name==='TREE_STUMP'?17:name==='ROCK_CLUSTER'&&group.members.length>1?Math.max(primary.height,Math.min(56,group.area.bottom-group.area.top+6)):primary.height;
+  const height=naturalHeight({...primary,name});
   const width=height*frame.w/frame.h;
   const plant:VisualPlant={...primary,name,height,x:group.members.length>1?(group.area.left+group.area.right)/2:primary.x,y:group.members.length>1?Math.max(...group.members.map(p=>p.y)):primary.y,drawWidth:width,ground:false,occupied:group.area};
   result.push(plant);occupied.push(group.area);
@@ -36,7 +37,8 @@ export function resolveVegetationOccupancy(plan:VegetationPlan){
   const body=trunk?{left:p.x-p.drawWidth*.13,right:p.x+p.drawWidth*.13,top:p.y-p.height*.20,bottom:p.y+5}:{left:p.x-p.drawWidth*.47,right:p.x+p.drawWidth*.47,top:p.y-p.height*.86,bottom:p.y+3};
   return union(body,p.occupied!);
  });
- for(const p of plan.plants.filter(p=>!p.solid)){
+ for(const original of plan.plants.filter(p=>!p.solid)){
+  const p={...original,height:naturalHeight(original)};
   const f=frames[p.name].frame,width=p.height*f.w/f.h;
   const large=structural(p),tall=p.name.startsWith('REEDS')||p.name==='CATTAILS'||p.name==='GRASS_TALL';
   const area={left:p.x-width*.47,right:p.x+width*.47,top:p.y-p.height*.94,bottom:p.y+2};
@@ -47,6 +49,6 @@ export function resolveVegetationOccupancy(plan:VegetationPlan){
   result.push({...p,drawWidth:width,ground:large?false:p.ground,occupied:large?area:undefined});
  }
  const polish=polishVegetation(result);
- for(const p of polish.plants){const f=frames[p.name].frame;if(p.name==='BRANCHES'&&p.solid)p.height=15;p.drawWidth=p.height*f.w/f.h;}
+ for(const p of polish.plants){const f=frames[p.name].frame;p.drawWidth=p.height*f.w/f.h;}
  return {...polish,occupied,suppressed,merged:solids.length-groups.length,structuralCount:occupied.length};
 }

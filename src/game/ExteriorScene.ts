@@ -11,6 +11,7 @@ import { navigation } from './world/collisions';
 import { TerrainLayers } from './world/terrain';
 import { WaterLayer } from './world/water';
 import { VegetationLayer } from './world/vegetation';
+import { ActorGrassOcclusionLayer } from './world/actorGrassOcclusion';
 import { WindSystem } from './world/wind';
 import { TulipFieldLayer } from './world/TulipFieldLayer';
 import { createTulipFieldPlan } from './world/tulipFieldPlan';
@@ -19,13 +20,14 @@ import type { FarmRuntime } from './types';
 // Phase 2 adds nature above the unchanged foundation; existing task actors remain.
 export class ExteriorScene extends WorldScene {
  readonly wind=new WindSystem();
+ private actorGrass!:ActorGrassOcclusionLayer;
  private tulips!:TulipFieldLayer;private vegetation!:VegetationLayer;private terrain!:TerrainLayers;private water!:WaterLayer;private diagnosticAt=0;private entering=false;private celebration?:CelebrationEvent;
  constructor(runtime:FarmRuntime){super('Exterior',runtime);}
  preload(){this.load.image('actors','/assets/actors-v2.webp');this.load.atlas('vegetation','/assets/vegetation-atlas.png','/assets/vegetation-atlas.json');this.load.atlas('tulip-garden','/assets/tulip-garden-atlas.png','/assets/tulip-garden-atlas.json');this.load.atlas('tulip-flowers','/assets/tulip-flowers-v2.png','/assets/tulip-flowers-v2.json');}
  create(){
   createFrames(this,true);
   this.terrain=new TerrainLayers(this);this.water=new WaterLayer(this,this.terrain.masks);
-  this.vegetation=new VegetationLayer(this,this.terrain.masks,this.wind);
+  this.vegetation=new VegetationLayer(this,this.terrain.masks,this.wind,this.water.habitat);
   this.nav=new NavigationGrid({...navigation,obstacles:[...navigation.obstacles,...this.vegetation.plan.obstacles]},7);
   const garden=createTulipFieldPlan(this.vegetation.plan,this.nav);
   this.tulips=new TulipFieldLayer(this,garden,this.wind,this.terrain.masks);
@@ -34,7 +36,7 @@ export class ExteriorScene extends WorldScene {
   const camera=this.cameras.main,fit=Math.max(this.scale.width/MAP.width,this.scale.height/MAP.height),dpr=Math.min(window.devicePixelRatio||1,2);
   camera.setBounds(0,0,MAP.width,MAP.height).setZoom(this.scale.width/dpr<760?Math.max(fit,.85*dpr):fit).centerOn(...zoneById.centralPlaza.center);
   this.controls=new CameraControls(this,fit,2.4*dpr,MAP);
-  this.addWorkers();
+  this.addWorkers();this.actorGrass=new ActorGrassOcclusionLayer(this,this.water.habitat,this.vegetation.displayPlants);
   if(CELEBRATION_MODE)this.celebration=new CelebrationEvent(this,MAP,zoneById.centralPlaza.center);
   const enter=(event:Event)=>{if(this.input.enabled)void this.enter((event as CustomEvent<InteriorId>).detail);};
   window.addEventListener('farm-enter',enter);this.events.once('shutdown',()=>window.removeEventListener('farm-enter',enter));
@@ -44,7 +46,7 @@ export class ExteriorScene extends WorldScene {
    hit.setInteractive(new Phaser.Geom.Polygon(z.shape.map(([x,y])=>({x:x-Math.min(...xs),y:y-Math.min(...ys)}))),Phaser.Geom.Polygon.Contains);
    hit.on('pointerup',()=>{if(!this.controls.moved)this.runtime.props.current.onSelect(z.legacyObject!);});
   }
-  this.game.canvas.dataset.mapVersion='phase-2.6-grass-r2';this.game.canvas.dataset.mapSize=`${MAP.width}x${MAP.height}`;
+  this.game.canvas.dataset.mapVersion='phase-2.7-nature';this.game.canvas.dataset.mapSize=`${MAP.width}x${MAP.height}`;
   this.game.canvas.dataset.humanHeight=String(SCALE.humanHeight);
   this.events.once('shutdown',()=>{this.actors=[];});
   this.runtime.loading(false);camera.fadeIn(350);
@@ -64,9 +66,9 @@ export class ExteriorScene extends WorldScene {
  }
  update(time:number,delta:number){
   super.update(time,delta);this.celebration?.update(time,delta);if(!this.scene.isVisible())return;
-  this.terrain.cull();this.water.update(time);this.vegetation.update(time,delta);this.tulips.update(time);
+  this.terrain.cull();this.water.update(time);this.vegetation.update(time,delta);this.tulips.update(time);this.actorGrass.update(this.actors);
   if(time-this.diagnosticAt>750){this.diagnosticAt=time;const c=this.cameras.main;
-   this.game.canvas.dataset.world=JSON.stringify({version:'phase-2.6-grass-r2',vegetation:this.vegetation.diagnostics,tulipField:this.tulips.diagnostics,fps:Math.round(this.game.loop.actualFps),waterFrame:this.water.animationFrame,chunks:this.terrain.objects.length,visibleChunks:this.terrain.objects.filter(o=>o.visible).length,zoom:c.zoom,camera:[Math.round(c.worldView.x),Math.round(c.worldView.y),Math.round(c.worldView.width),Math.round(c.worldView.height)],actors:this.actors.map(a=>({id:a.id,x:Math.round(a.x),y:Math.round(a.y),state:a.state,route:a.route.length,walkable:a.nav.canWalk(a.x,a.y)}))});
+   this.game.canvas.dataset.world=JSON.stringify({version:'phase-2.7-nature',renderer:this.game.renderer.type,vegetation:this.vegetation.diagnostics,tulipField:this.tulips.diagnostics,fps:Math.round(this.game.loop.actualFps),waterFrame:this.water.animationFrame,water:this.water.diagnostics,actorGrass:this.actorGrass.diagnostics,chunks:this.terrain.objects.length,visibleChunks:this.terrain.objects.filter(o=>o.visible).length,zoom:c.zoom,camera:[Math.round(c.worldView.x),Math.round(c.worldView.y),Math.round(c.worldView.width),Math.round(c.worldView.height)],actors:this.actors.map(a=>({id:a.id,x:Math.round(a.x),y:Math.round(a.y),state:a.state,route:a.route.length,walkable:a.nav.canWalk(a.x,a.y)}))});
   }
  }
 }

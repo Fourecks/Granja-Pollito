@@ -7,8 +7,8 @@ export const grassProfiles = [
  {name:'edge_01',width:7,height:3,blades:3}, {name:'edge_02',width:9,height:4,blades:4},
  {name:'foreground_01',width:11,height:5,blades:5}, {name:'foreground_02',width:15,height:6,blades:7}, {name:'foreground_03',width:18,height:7,blades:8},
 ] as const;
-export function drawGrass(ctx:CanvasRenderingContext2D,x:number,y:number,profile:number,seed:number,pose=0,wet=false,maxHeight=Infinity){
- const p=grassProfiles[profile];
+export function drawGrass(ctx:CanvasRenderingContext2D,x:number,y:number,profile:number|{width:number;height:number;blades:number},seed:number,pose=0,wet=false,maxHeight=Infinity){
+ const p=typeof profile==='number'?grassProfiles[profile]:profile;
  let state=seed>>>0;const random=()=>{state=(Math.imul(state,1664525)+1013904223)>>>0;return state/4294967296;};
  const colors=wet?['#416a37','#578243','#71974c','#92ac60']:['#567733','#6e9140','#8caa50','#a8ba65'];
  for(let b=0;b<p.blades;b++){

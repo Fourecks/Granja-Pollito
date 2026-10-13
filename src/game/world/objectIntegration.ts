@@ -3,7 +3,7 @@ import { MAP } from './mapConfig';
 import type { WorldMasks } from './terrain';
 import { drawGrass } from './grassArt';
 /** A root/foot edge; future props can provide anchors without changing their collisions. */
-export interface IntegrationAnchor {id:string;x:number;y:number;span:number;cover:number;wet?:boolean;depth?:number;}
+export interface IntegrationAnchor {id:string;x:number;y:number;span:number;cover:number;kind?:'tree'|'rock'|'wood'|'flower'|'plant';wet?:boolean;depth?:number;}
 const CELL_W=64,CELL_H=16,COLUMNS=16;
 /** Static, precomposed root patches share one atlas; no GameObject for individual blades. */
 export class ObjectIntegrationLayer {
@@ -18,12 +18,17 @@ export class ObjectIntegrationLayer {
    const cx=index%COLUMNS*CELL_W,cy=Math.floor(index/COLUMNS)*CELL_H;
    let state=(Math.imul(Math.round(anchor.x),73856093)^Math.imul(Math.round(anchor.y),19349663))>>>0;
    const random=()=>{state=(Math.imul(state,1664525)+1013904223)>>>0;return state/4294967296;};
-   const span=Math.min(48,anchor.span/MAP.pixel),count=3+Math.floor(random()*5);
+   const span=Math.min(48,anchor.span/MAP.pixel),count=Math.max(4,Math.ceil(span/7))+Math.floor(random()*3);
    for(let i=0;i<count;i++){
-    const x=Math.round(cx+CELL_W/2+(random()-.5)*span),y=cy+CELL_H-3+Math.floor(random()*2);
+    const x=Math.round(cx+CELL_W/2+(random()-.5)*span),y=cy+CELL_H-5+Math.floor(random()*2);
     const profile=anchor.cover<8?10:12+Math.floor(random()*3);
     ctx.globalAlpha=.85+random()*.15;
     drawGrass(ctx,x,y,profile,Math.floor(random()*4294967295),0,!!anchor.wet,anchor.cover/MAP.pixel);
+    // A few native leaves and tiny blossom accents break the repeated tuft silhouette.
+    if(i%3===0&&anchor.kind!=='rock'){
+     ctx.fillStyle=anchor.wet?'#678646':'#85a34b';ctx.fillRect(x-2,y-2,2,1);ctx.fillStyle='#587b36';ctx.fillRect(x-1,y-3,1,1);
+     if(anchor.kind==='flower'&&random()<.22){ctx.fillStyle='#ddc685';ctx.fillRect(x-2,y-3,1,1);}
+    }
     ctx.globalAlpha=1;
    }
    // Pixel mask clips the front patches to their actual habitat, including path edges.
