@@ -23,8 +23,11 @@ export class BridgeLayer {
      const along=start+(end-start)*i/count,pos=bridgePoint(p,along,across),isEnd=i===0||i===count;
      if(i<count){const next=bridgePoint(p,start+(end-start)*(i+1)/count,across);const steps=Math.ceil(Math.hypot(next.x-pos.x,next.y-pos.y)/16);for(let k=0;k<steps;k++)this.rail(p,{x:pos.x+(next.x-pos.x)*k/steps,y:pos.y+(next.y-pos.y)*k/steps},{x:pos.x+(next.x-pos.x)*(k+1)/steps,y:pos.y+(next.y-pos.y)*(k+1)/steps});}
      if(cliffFaces.some(face=>inside([pos.x,pos.y],face))||bridgePlans.some(other=>other!==p&&inside([pos.x,pos.y],other.crossing.shape)))continue;
-     const key='bridge-stone',f=scene.textures.get(key).get('post'),height=p.postHeight;
-     const post=scene.add.image(Math.round(pos.x),Math.round(pos.y),key,'post').setOrigin(.5,.96).setScale(height/f.height).setDepth(pos.y+.12).setData('bridgePart','post');this.objects.push(post);this.postCount++;
+     // The reference atlas post is timber even in the stone sheet: stone uses only its low rock edge.
+     if(p.style==='rustic'||p.style==='rope'){
+      const key='bridge-stone',f=scene.textures.get(key).get('post'),height=p.postHeight;
+      const post=scene.add.image(Math.round(pos.x),Math.round(pos.y),key,'post').setOrigin(.5,.96).setScale(height/f.height).setDepth(pos.y+.12).setData('bridgePart','post').setData('crossingId',p.crossing.id).setData('material','wood');this.objects.push(post);this.postCount++;
+     }
      if(isEnd){anchors.push({id:`${p.crossing.id}-${side}-${i}`,x:pos.x,y:pos.y+2,depth:pos.y+.2,span:16,cover:7,kind:'plant'});
       const landing=sheet.get('landing'),bank=bridgePoint(p,along+(i===0?-3:3),across+side*5);
       const gx=Math.floor(bank.x/2),gy=Math.floor(bank.y/2),j=(gy*1536+gx)*4;

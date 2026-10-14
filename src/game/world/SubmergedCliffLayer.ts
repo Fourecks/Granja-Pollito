@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { MAP, cliffs, cliffFaces } from './mapConfig';
 import type { WorldMasks } from './terrain';
+import { naturalRockColor } from './rockMaterial';
+// Retain the approved water/fall sampling palette; only the rock texture below it changes.
 export function submergedRockColor(gx:number,gy:number){
  const wave=Math.floor(Math.sin(gx/8)*2+Math.sin(gx/19)*3),row=Math.floor((gy+wave)/14),edge=(gx+(row%2)*11+Math.floor(Math.sin(gy/6)*2))%23;
  const seam=(gy+wave)%14===0||edge===0,shade=seam?-24:edge<3?10:edge>18?-8:0;return [117+shade,115+shade,109+shade];
@@ -29,8 +31,8 @@ export class SubmergedCliffLayer {
    const c=document.createElement('canvas');c.width=c.height=side;const ctx=c.getContext('2d')!,image=ctx.createImageData(side,side);let filled=false;
    for(let y=0;y<side;y++)for(let x=0;x<side;x++){
     const gx=cx+x,gy=cy+y,f=this.fade[gy*W+gx];if(!f)continue;filled=true;this.pixels++;
-    // Same native block sizes as the dry wall, with restrained achromatic contrast.
-    image.data.set([...submergedRockColor(gx,gy),Math.round(230*f)],(y*side+x)*4);
+    // Same irregular strata and fissures as the dry wall, darkened and cooled by wetness.
+    image.data.set([...naturalRockColor(gx,gy,true),Math.round(230*f)],(y*side+x)*4);
    }
    if(!filled)continue;ctx.putImageData(image,0,0);const key=`submerged-cliff-${cx}-${cy}`;scene.textures.addCanvas(key,c);
    this.objects.push(scene.add.image(cx*2,cy*2,key).setOrigin(0).setScale(2).setDepth(-28.5));

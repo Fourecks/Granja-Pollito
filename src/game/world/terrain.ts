@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { MAP, mainland, islands, rawWater, cliffFaces, roads, ramps } from './mapConfig';
 import { zones } from './zones';
+import { naturalRockColor } from './rockMaterial';
+import { visualRoadMask } from './roadAppearance';
 import type { Polygon } from '../navigation';
 const W=MAP.width/MAP.pixel,H=MAP.height/MAP.pixel;
 export interface WorldMasks { land:Uint8ClampedArray; water:Uint8ClampedArray; surfaces:Uint8ClampedArray; paths:Uint8ClampedArray; cliffs:Uint8ClampedArray; cliffWalls?:Uint8ClampedArray }
@@ -47,21 +49,30 @@ const palette:Record<number,number[][]>={
  8:[[19,120,151],[21,129,162],[24,138,168],[25,144,173],[20,124,159]],
 };
 function rgba(data:Uint8ClampedArray,i:number,c:number[],alpha=255){data[i]=c[0];data[i+1]=c[1];data[i+2]=c[2];data[i+3]=alpha;}
-/** Shared dry-wall material for the single local crossing transition; geometry is untouched. */
-export function cliffRockColor(gx:number,gy:number){
- const h=hash(gx,gy),colors=palette[7],blend=patchNoise(gx,gy)*(colors.length-1),low=Math.floor(blend),mix=blend-low;
- let color=colors[low].map((v,k)=>Math.round(v*(1-mix)+colors[Math.min(low+1,colors.length-1)][k]*mix)+(h%7-3));
- const wave=Math.floor(Math.sin(gx/8)*2+Math.sin(gx/19)*3),row=Math.floor((gy+wave)/14),edge=(gx+(row%2)*11+Math.floor(Math.sin(gy/6)*2))%23,seam=(gy+wave)%14===0||edge===0;
- color=color.map(v=>v+(seam?-34:edge<3?17:edge>18?-19:0));if(h%29===0)color=color.map(v=>v-11);return color;
+/** Shared rock at the dry wall and beside built-in stone stairs. */
+export function cliffRockColor(gx:number,gy:number){return naturalRockColor(gx,gy);}
+export function cliffFaceColor(gx:number,gy:number,masks:WorldMasks){
+ let color=cliffRockColor(gx,gy);
+ const wall=masks.cliffWalls??masks.cliffs;
+ let up=0,down=0;
+ while(up<48&&gy-up>0&&wall[((gy-up-1)*W+gx)*4+3]>127)up++;
+ while(down<48&&gy+down+1<H&&wall[((gy+down+1)*W+gx)*4+3]>127)down++;
+ const {land,water,surfaces}=masks;
+ const rim=1+hash(Math.floor(gx/3),0,19)%3,above=((gy-up-1)*W+gx)*4;
+ const grass=above>=0&&land[above+3]>127&&!water[above+3]&&[0,9,10,11].includes(surfaces[above]);
+ if(up<rim)color=grass?[100+up*3,125+up*2,59]:[133,122,91];
+ else if(up<rim+3)color=color.map(v=>v-25+(up-rim)*4);
+ else if(down<4)color=color.map(v=>v-14+down*2);
+ return color;
 }
 export class TerrainLayers {
- readonly masks=createMasks(); readonly objects:Phaser.GameObjects.Image[]=[];
+ readonly masks=createMasks(); private roadPixels=visualRoadMask(this.masks.surfaces); readonly objects:Phaser.GameObjects.Image[]=[];
  constructor(private scene:Phaser.Scene){
   this.chunks('water',-30);this.chunks('terrain',-20);this.chunks('surfaces',-18);this.chunks('paths',-17);this.chunks('topography',-16);
 
  }
  private chunks(layer:'water'|'terrain'|'surfaces'|'paths'|'topography',depth:number){
-  const {land,water,surfaces,paths,cliffs}=this.masks,n=MAP.chunk/MAP.pixel;
+  const {land,water,surfaces,cliffs}=this.masks,paths=this.roadPixels,n=MAP.chunk/MAP.pixel;
   for(let cy=0;cy<H;cy+=n)for(let cx=0;cx<W;cx+=n){
    const c=canvas(n,n),ctx=c.getContext('2d')!,image=ctx.createImageData(n,n);let filled=false;
    for(let y=0;y<n;y++)for(let x=0;x<n;x++){
@@ -82,12 +93,7 @@ export class TerrainLayers {
     }
     if(material===4){const furrow=(gy+Math.floor(gx/50)*2)%9;color=color.map(v=>v+(furrow===0?-28:furrow===2?15:0));}
     if(material===5){const row=Math.floor(gy/7),seam=gy%7===0||(gx+(row%2)*6)%13===0;color=color.map(v=>v+(seam?-30:h%9===0?7:0));}
-    if(material===7){const wave=Math.floor(Math.sin(gx/8)*2+Math.sin(gx/19)*3),row=Math.floor((gy+wave)/14),edge=(gx+(row%2)*11+Math.floor(Math.sin(gy/6)*2))%23,seam=(gy+wave)%14===0||edge===0;
-     color=color.map(v=>v+(seam?-34:edge<3?17:edge>18?-19:0));if(h%29===0)color=color.map(v=>v-11);
-     const above=i-W*4,below=i+W*4;
-     if(above>=0&&cliffs[above+3]<128&&land[above+3]>127&&!water[above+3]&&[0,9,10,11].includes(surfaces[above])&&h%3)color=[103,133,57];
-     if(below<cliffs.length&&cliffs[below+3]<128)color=color.map(v=>Math.round(v*.79));
-    }
+    if(material===7)color=cliffFaceColor(gx,gy,this.masks);
     // Shallow shoreline color and broken foam remain on the actual water layer.
     if(material===8){let shore=false;for(const offset of [-W*3,W*3,-3,3]){const v=i+offset*4;if(v>=0&&v<water.length&&water[v+3]<128)shore=true;}if(shore)color=h%5===0?[179,224,210]:[58,159,173];else if((gx+gy*2)%41===0&&h%4===0)color=[34,149,178];}
     if(material===1||material===2){const surface=layer==='paths'?paths:surfaces;const edge=surface[i-4]!==id||surface[i+4]!==id||surface[i-W*4]!==id||surface[i+W*4]!==id;if(edge)color=color.map(v=>v-14);if(h%97===0)color=[166,135,84];}
