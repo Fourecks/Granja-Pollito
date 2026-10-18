@@ -2,7 +2,8 @@ import Phaser from 'phaser';
 import { MAP } from './mapConfig';
 import { WindSystem, type WindVariation } from './wind';
 import { ObjectIntegrationLayer } from './objectIntegration';
-import type { WorldMasks } from './terrain';
+import { pathPixelColor, type WorldMasks } from './terrain';
+import { visualRoadMask } from './roadAppearance';
 import { selectReadableTulips } from './tulipDisplay';
 import type { TulipFieldPlan, Tulip } from './tulipFieldPlan';
 interface Patch {image:Phaser.GameObjects.Image;moving:boolean;variation:WindVariation;nextFrame:number;}
@@ -12,17 +13,29 @@ export class TulipFieldLayer {
  private flowerCount=0;private integration:ObjectIntegrationLayer;
  private patches:Patch[]=[];private visible:Patch[]=[];private cullAt=0;
  constructor(private scene:Phaser.Scene,readonly plan:TulipFieldPlan,private wind:WindSystem,masks:WorldMasks){
-  this.ground();this.flowers();this.props();
+  this.ground(masks);this.flowers();this.props();
   const anchors=this.plan.props.filter(p=>p.key!=='BENCH').flatMap(p=>(p.key==='ARCH'?[-34,34]:p.key==='FENCE'?[-21,21]:[0]).map((dx,i)=>({id:`${p.id}-${i}`,x:p.position[0]+dx,y:p.position[1]+p.height*.04,depth:p.position[1],span:p.key==='TREE_BLOSSOM_PINK'?28:13,cover:6})));
   this.integration=new ObjectIntegrationLayer(scene,masks,anchors,'tulip-prop-integration');
  }
- private ground(){
+ private ground(masks:WorldMasks){
   const c=document.createElement('canvas');c.width=MAP.width/2;c.height=MAP.height/2;const ctx=c.getContext('2d')!;
   ctx.lineJoin=ctx.lineCap='round';ctx.strokeStyle='#937742';ctx.lineWidth=11;ctx.beginPath();this.plan.path.forEach(([x,y],i)=>i?ctx.lineTo(x/2,y/2):ctx.moveTo(x/2,y/2));ctx.stroke();
   ctx.strokeStyle='#d0ac72';ctx.lineWidth=9;ctx.stroke();
+  const road=ctx.getImageData(0,0,c.width,c.height),base=visualRoadMask(masks.surfaces,masks),W=c.width;
+  for(let y=0;y<c.height;y++)for(let x=0;x<W;x++){
+   const i=(y*W+x)*4;if(!road.data[i+3])continue;
+   if(base[i+3]||masks.water[i+3]||masks.cliffs[i+3]||masks.land[i+3]<128){road.data[i+3]=0;continue;}
+   const edge=[-1,1,-W,W].some(o=>road.data[i+o*4+3]<128&&!base[i+o*4+3]);
+   const color=pathPixelColor(x,y,edge);road.data.set([...color,255],i);
+  }
+  ctx.putImageData(road,0,0);
   const [rx,ry]=this.plan.rest;ctx.fillStyle='#cabb94';ctx.beginPath();ctx.ellipse(rx/2,ry/2,26,17,0,0,Math.PI*2);ctx.fill();
   // Tiny uneven paving marks stay within the intimate rest area.
   ctx.fillStyle='#a49571';for(let y=-14;y<=14;y+=4)for(let x=-23;x<=23;x+=7)if(x*x/625+y*y/225<.9)ctx.fillRect(rx/2+x+(y%3),ry/2+y,4,1);
+  const bench=this.plan.props.find(p=>p.key==='BENCH')!;
+  for(const [dx,dy,w] of [[-25,-3,5],[-12,-8,4],[22,1,5],[29,-6,4]]){
+   const x=Math.round((bench.position[0]+dx)/2),y=Math.round((bench.position[1]+dy)/2);ctx.fillStyle='rgba(42,43,27,.23)';ctx.fillRect(x-1,y,w,1);ctx.fillStyle='rgba(42,43,27,.10)';ctx.fillRect(x-2,y+1,w+2,1);
+  }
   for(let cy=0;cy<c.height;cy+=128)for(let cx=0;cx<c.width;cx+=128){
    const chunk=document.createElement('canvas');chunk.width=chunk.height=128;const cc=chunk.getContext('2d')!;cc.drawImage(c,cx,cy,128,128,0,0,128,128);
    if(!cc.getImageData(0,0,128,128).data.some((v,i)=>i%4===3&&v))continue;
@@ -64,7 +77,12 @@ export class TulipFieldLayer {
     continue;
    }
    const key=prop.key==='TREE_BLOSSOM_PINK'?'vegetation':'tulip-garden',f=this.scene.textures.get(key).get(prop.key);
-   const image=this.scene.add.image(x,y,key,prop.key).setOrigin(.5,.96).setScale(prop.height/f.height).setDepth(y).setData('naturalObject',{id:prop.id,kind:prop.key,interaction:prop.key==='BENCH'?'sit-prepared':undefined});
+   let frameKey=key,frameName=prop.key as string,scale=prop.height/f.height;
+   if(prop.key==='BENCH'){
+    const c=document.createElement('canvas');c.height=Math.round(prop.height);c.width=Math.round(c.height*f.width/f.height);const ctx=c.getContext('2d')!;ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(this.scene.textures.get(key).getSourceImage() as HTMLImageElement,f.cutX,f.cutY,f.cutWidth,f.cutHeight,0,0,c.width,c.height);frameKey='garden-bench-native';this.scene.textures.addCanvas(frameKey,c);frameName='__BASE';scale=1;
+   }
+   const image=this.scene.add.image(x,y,frameKey,frameName).setOrigin(.5,.96).setScale(scale).setDepth(y).setData('naturalObject',{id:prop.id,kind:prop.key,interaction:prop.key==='BENCH'?'sit-prepared':undefined});
    if(prop.key==='BENCH'){image.setInteractive({useHandCursor:true});image.on('pointerup',()=>this.scene.events.emit('natural-object-selected',{id:prop.id,kind:'bench',position:prop.position}));}
    this.objects.push(image);
   }

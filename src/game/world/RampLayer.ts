@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { ramps, bridges } from './mapConfig';
+import { ramps, bridges, cliffFaces } from './mapConfig';
+import { inside } from '../navigation';
 import { cliffFaceColor, type WorldMasks } from './terrain';
 const pathWidths:Record<string,number>={'north-steps':30,'forest-pass':24,'west-pass':22,'coop-steps':24,'home-steps':24,'beach-west-steps':22,'beach-east-steps':36,'pier-steps':26};
 /** Historical terrain passages are slopes/stairs, not bridges. Clip steps to the actual cliff. */
@@ -18,7 +19,9 @@ export class RampLayer {
    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
     const wx=left+x*pixel,wy=top+y*pixel,index=(Math.floor(wy/2)*1536+Math.floor(wx/2))*4;
     // Fill exactly the native cells removed by the passage mask; no pale road sliver at its sides.
-    if((masks.cliffWalls??masks.cliffs)[index+3]<128||masks.cliffs[index+3]>127)continue;
+    const nativeWall=(masks.cliffWalls??masks.cliffs)[index+3]>127&&masks.cliffs[index+3]<128;
+    const pierSeam=connected&&inside([wx,wy],ramp.shape)&&cliffFaces.some(face=>inside([wx,wy],face));
+    if(!nativeWall&&!pierSeam)continue;
     const vx=wx-visual.from[0],vy=wy-visual.from[1],across=-uy*vx+ux*vy,along=ux*vx+uy*vy,j=(y*w+x)*4,noise=(x*17+y*31)%7;
     if(Math.abs(across)>pathWidths[ramp.id]/2){
      image.data.set([...cliffFaceColor(Math.floor(wx/2),Math.floor(wy/2),masks),255],j);

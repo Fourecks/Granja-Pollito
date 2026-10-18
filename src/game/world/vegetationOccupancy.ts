@@ -49,6 +49,8 @@ export function resolveVegetationOccupancy(plan:VegetationPlan){
   result.push({...p,drawWidth:width,ground:large?false:p.ground,occupied:large?area:undefined});
  }
  const polish=polishVegetation(result);
+ // Only the fruit tree explicitly shown on the garden approach moves; physical blockers are unchanged.
+ for(const p of polish.plants)if(p.name==='FRUIT_TREE_01'&&p.x===2428&&p.y===477){p.x=2418;p.y=430;if(p.occupied)p.occupied={left:p.occupied.left-10,right:p.occupied.right-10,top:p.occupied.top-47,bottom:p.occupied.bottom-47};}
  for(const p of polish.plants){const f=frames[p.name].frame;p.drawWidth=p.height*f.w/f.h;}
  return {...polish,occupied,suppressed,merged:solids.length-groups.length,structuralCount:occupied.length};
 }

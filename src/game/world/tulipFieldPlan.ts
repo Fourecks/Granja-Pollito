@@ -43,5 +43,8 @@ export function createTulipFieldPlan(existing:VegetationPlan,nav:NavigationGrid)
   if(patch<-.6&&random()>.3)continue;
   flowers.push({x,y,variant:random()<.68?Math.floor(random()*5):random()<.72?5:random()<.75?6:7,height:26+random()*8,animated:(Math.abs(Math.sin(Math.floor(x/96)*12.9898+Math.floor(y/32)*78.233)*43758.5453)%1)<.30,phase:random()*.5});
  }
- return {nav:gardenNav,zone:tulipField,flowers,props,obstacles,path,rest,bounds:{...bounds,width:Math.min(bounds.width,MAP.width-bounds.x)}};
+ // A short, straight passage crosses the gate plane instead of turning back at its feet.
+ const entrance=path.findIndex(p=>p[0]===entry[0]&&p[1]===entry[1]);
+ const correctedPath:Point[]=[...path.slice(0,entrance),point(1286,244),entry,point(1286,213),point(1303,213),point(1316,236),point(1317,241),...path.slice(entrance+1)];
+ return {nav:gardenNav,zone:tulipField,flowers:flowers.filter(f=>distanceToPath(f.x,f.y,correctedPath)>=19),props,obstacles,path:correctedPath,rest,bounds:{...bounds,width:Math.min(bounds.width,MAP.width-bounds.x)}};
 }

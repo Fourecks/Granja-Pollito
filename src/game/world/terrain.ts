@@ -49,6 +49,12 @@ const palette:Record<number,number[][]>={
  8:[[19,120,151],[21,129,162],[24,138,168],[25,144,173],[20,124,159]],
 };
 function rgba(data:Uint8ClampedArray,i:number,c:number[],alpha=255){data[i]=c[0];data[i+1]=c[1];data[i+2]=c[2];data[i+3]=alpha;}
+/** The garden splice samples the same dirt palette as the existing road. */
+export function pathPixelColor(gx:number,gy:number,edge=false){
+ const h=hash(gx,gy),colors=palette[1],blend=patchNoise(gx,gy)*(colors.length-1),low=Math.floor(blend),mix=blend-low;
+ let color=colors[low].map((v,k)=>Math.round(v*(1-mix)+colors[Math.min(low+1,colors.length-1)][k]*mix)+(h%7-3));
+ if(edge)color=color.map(v=>v-14);if(h%97===0)color=[166,135,84];return color;
+}
 /** Shared rock at the dry wall and beside built-in stone stairs. */
 export function cliffRockColor(gx:number,gy:number){return naturalRockColor(gx,gy);}
 export function cliffFaceColor(gx:number,gy:number,masks:WorldMasks){
@@ -66,7 +72,7 @@ export function cliffFaceColor(gx:number,gy:number,masks:WorldMasks){
  return color;
 }
 export class TerrainLayers {
- readonly masks=createMasks(); private roadPixels=visualRoadMask(this.masks.surfaces); readonly objects:Phaser.GameObjects.Image[]=[];
+ readonly masks=createMasks(); private roadPixels=visualRoadMask(this.masks.surfaces,this.masks); readonly objects:Phaser.GameObjects.Image[]=[];
  constructor(private scene:Phaser.Scene){
   this.chunks('water',-30);this.chunks('terrain',-20);this.chunks('surfaces',-18);this.chunks('paths',-17);this.chunks('topography',-16);
 
