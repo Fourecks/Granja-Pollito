@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { ramps, bridges, cliffFaces } from './mapConfig';
 import { inside } from '../navigation';
 import { cliffFaceColor, type WorldMasks } from './terrain';
-const pathWidths:Record<string,number>={'north-steps':30,'forest-pass':24,'west-pass':22,'coop-steps':24,'home-steps':24,'beach-west-steps':34,'beach-east-steps':36,'pier-steps':26};
+const pathWidths:Record<string,number>={'north-steps':30,'forest-pass':24,'west-pass':22,'coop-steps':24,'home-steps':24,'beach-west-steps':38,'beach-east-steps':40,'pier-steps':26};
 const beachRamps=new Set(['beach-west-steps','beach-east-steps']);
 /** Historical terrain passages are slopes/stairs, not bridges. Clip steps to the actual cliff. */
 export class RampLayer {
@@ -28,19 +28,32 @@ export class RampLayer {
      image.data.set([...cliffFaceColor(Math.floor(wx/2),Math.floor(wy/2),masks),255],j);
      continue;
     }
-    const beach=beachRamps.has(ramp.id),period=beach?14:8,step=connected?((along+12)%9+9)%9:((along%period)+period)%period;
-    // South-coast passages are broad cut-earth ramps. Repeated light/dark rolls create a visible descent
-    // through the cliff while keeping the top and beach approaches visually separate from the road.
-    const t=Math.max(0,Math.min(1,along/Math.max(1,length))),rolled=beach?Math.sin(t*Math.PI):0;
-    const rampHalf=pathWidths[ramp.id]/2*(beach?(0.82+rolled*.18):1);
-    if(beach&&Math.abs(across)>rampHalf){image.data.set([...cliffFaceColor(Math.floor(wx/2),Math.floor(wy/2),masks),255],j);continue;}
-    let color=beach?(step<2?[79,76,67]:step<5?[169+noise,155+noise,126+noise]:step<10?[146+noise,136+noise,113+noise]:[120+noise,115+noise,101+noise]):step<2?[94,88,72]:step<4?[177,164,137]:[145+noise,137+noise,114+noise];
+    const beach=beachRamps.has(ramp.id),period=beach?10:8,step=connected?((along+12)%9+9)%9:((along%period)+period)%period;
+    // The two beach passages are authored as masonry staircases cut into the cliff.
+    // A light tread + dark riser rhythm makes the descent read clearly from the elevated camera.
+    const outerHalf=pathWidths[ramp.id]/2,stairHalf=outerHalf-6,absAcross=Math.abs(across);
+    if(beach&&absAcross>outerHalf){image.data.set([...cliffFaceColor(Math.floor(wx/2),Math.floor(wy/2),masks),255],j);continue;}
+    let color:number[];
+    if(beach){
+     const sideWall=absAcross>stairHalf;
+     if(sideWall){
+      const block=((Math.floor(along/8)+Math.floor((absAcross-stairHalf)/3))&1)===0;
+      color=block?[142+noise,136+noise,120+noise]:[122+noise,118+noise,105+noise];
+      if(absAcross>outerHalf-2)color=color.map(v=>v-28);
+      else if(absAcross<stairHalf+2)color=color.map(v=>v+12);
+     }else{
+      const riser=step<2,front=step>=2&&step<4;
+      color=riser?[78,75,67]:front?[126+noise,120+noise,105+noise]:[188+noise,176+noise,148+noise];
+      if(absAcross>stairHalf-2)color=color.map(v=>v-18);
+      if(!riser&&step===4)color=color.map(v=>v+10);
+     }
+    }else color=step<2?[94,88,72]:step<4?[177,164,137]:[145+noise,137+noise,114+noise];
     if(wood){const span=Math.max(4,wood.width-32),rows=Math.max(4,Math.floor(wood.height/5)-18),sx=16+((Math.floor((across+80)*5)%span)+span)%span,sy=8+((Math.floor((along+100)*3)%rows)+rows)%rows,k=(sy*wood.width+sx)*4;
      const base=wood.pixels[k+3]<128?[166,105,45]:[wood.pixels[k],wood.pixels[k+1],wood.pixels[k+2]],shade=step<1?-46:step<2?8:0;color=base.map(v=>Math.max(0,Math.min(255,v+shade)));
     }
     if(!connected){
-     const edge=(beach?rampHalf:pathWidths[ramp.id]/2)-Math.abs(across);
-     if(beach&&edge<5)color=color.map(v=>v-(edge<2?30:14));
+     const edge=(beach?outerHalf:pathWidths[ramp.id]/2)-Math.abs(across);
+     if(beach&&edge<3)color=color.map(v=>v-(edge<1?26:12));
      if(edge<2)color=color.map(v=>v-22);
      else if(edge<4&&step>=4)color=color.map(v=>v-8);
      if(step>=4&&(Math.floor(wx/4)*17+Math.floor(wy/4)*31)%47===0)color=color.map(v=>v-12);
