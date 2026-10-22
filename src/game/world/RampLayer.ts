@@ -68,14 +68,14 @@ export class RampLayer {
  private beachStaircase(scene:Phaser.Scene,ramp:(typeof ramps)[number]){
   const dx=ramp.to[0]-ramp.from[0],dy=ramp.to[1]-ramp.from[1],length=Math.hypot(dx,dy),ux=dx/length,uy=dy/length,nx=-uy,ny=ux;
   // Reach deliberately into the upper road and lower beach so the staircase never stops at the cliff seam.
-  const upperPad=14,lowerPad=24,outerHalf=ramp.id==='beach-east-steps'?29:28,wall=8,innerHalf=outerHalf-wall;
+  const upperPad=8,lowerPad=12,outerHalf=ramp.id==='beach-east-steps'?21:20,wall=5,innerHalf=outerHalf-wall;
   const corners=[
    [ramp.from[0]-ux*upperPad+nx*outerHalf,ramp.from[1]-uy*upperPad+ny*outerHalf],
    [ramp.from[0]-ux*upperPad-nx*outerHalf,ramp.from[1]-uy*upperPad-ny*outerHalf],
    [ramp.to[0]+ux*lowerPad+nx*outerHalf,ramp.to[1]+uy*lowerPad+ny*outerHalf],
    [ramp.to[0]+ux*lowerPad-nx*outerHalf,ramp.to[1]+uy*lowerPad-ny*outerHalf],
   ];
-  const left=Math.floor(Math.min(...corners.map(q=>q[0])))-6,top=Math.floor(Math.min(...corners.map(q=>q[1])))-6,right=Math.ceil(Math.max(...corners.map(q=>q[0])))+8,bottom=Math.ceil(Math.max(...corners.map(q=>q[1])))+10;
+  const left=Math.floor(Math.min(...corners.map(q=>q[0])))-4,top=Math.floor(Math.min(...corners.map(q=>q[1])))-4,right=Math.ceil(Math.max(...corners.map(q=>q[0])))+5,bottom=Math.ceil(Math.max(...corners.map(q=>q[1])))+6;
   const c=document.createElement('canvas');c.width=right-left+1;c.height=bottom-top+1;const ctx=c.getContext('2d')!,data=ctx.createImageData(c.width,c.height);
   for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++){
    const wx=left+x,wy=top+y,vx=wx-ramp.from[0],vy=wy-ramp.from[1],along=vx*ux+vy*uy,across=vx*nx+vy*ny,aa=Math.abs(across);
@@ -105,7 +105,7 @@ export class RampLayer {
 
   // Raised 3D parapets: dark front/side face, stone body, then a bright cap shifted upward.
   const drawRail=(side:number)=>{
-   const center=innerHalf+wall*.52;
+   const center=innerHalf+wall*.48;
    ctx.lineCap='square';ctx.lineJoin='miter';
    const stroke=(offsetY:number,width:number,color:string)=>{
     ctx.beginPath();
@@ -114,11 +114,11 @@ export class RampLayer {
     const x1=ramp.from[0]+ux*a1+nx*side*center-left,y1=ramp.from[1]+uy*a1+ny*side*center-top+offsetY;
     ctx.moveTo(Math.round(x0),Math.round(y0));ctx.lineTo(Math.round(x1),Math.round(y1));ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();
    };
-   stroke(5,wall+5,'rgba(48,45,40,.48)'); // cast/front shadow
-   stroke(3,wall+2,'rgb(91,87,79)');      // vertical face
+   stroke(3,wall+3,'rgba(48,45,40,.40)'); // cast/front shadow
+   stroke(2,wall+1,'rgb(91,87,79)');      // vertical face
    stroke(0,wall,'rgb(147,141,126)');      // wall body
-   stroke(-2,Math.max(3,wall-3),'rgb(210,199,173)'); // top cap
-   stroke(-3,2,'rgb(235,222,190)');        // highlight
+   stroke(-1,Math.max(2,wall-2),'rgb(210,199,173)'); // top cap
+   stroke(-2,1,'rgb(235,222,190)');        // highlight
    for(let a=-upperPad+4;a<length+lowerPad-2;a+=10){
     const qx=ramp.from[0]+ux*a+nx*side*center-left,qy=ramp.from[1]+uy*a+ny*side*center-top;
     ctx.fillStyle='rgba(89,84,76,.75)';ctx.fillRect(Math.round(qx)-2,Math.round(qy)-1,4,1);
@@ -129,9 +129,9 @@ export class RampLayer {
   // End pillars make the rail terminate as architecture instead of a painted stripe.
   for(const a of [-upperPad+3,length+lowerPad-4])for(const side of [-1,1]){
    const qx=ramp.from[0]+ux*a+nx*side*(innerHalf+wall*.52)-left,qy=ramp.from[1]+uy*a+ny*side*(innerHalf+wall*.52)-top;
-   ctx.fillStyle='rgba(54,51,46,.42)';ctx.fillRect(Math.round(qx)-5,Math.round(qy)+1,10,8);
-   ctx.fillStyle='rgb(132,127,115)';ctx.fillRect(Math.round(qx)-5,Math.round(qy)-3,10,8);
-   ctx.fillStyle='rgb(220,208,180)';ctx.fillRect(Math.round(qx)-4,Math.round(qy)-5,8,3);
+   ctx.fillStyle='rgba(54,51,46,.38)';ctx.fillRect(Math.round(qx)-3,Math.round(qy)+1,6,5);
+   ctx.fillStyle='rgb(132,127,115)';ctx.fillRect(Math.round(qx)-3,Math.round(qy)-2,6,5);
+   ctx.fillStyle='rgb(220,208,180)';ctx.fillRect(Math.round(qx)-2,Math.round(qy)-3,4,2);
   }
 
   const key=`beach-staircase-${ramp.id}`;if(scene.textures.exists(key))scene.textures.remove(key);scene.textures.addCanvas(key,c);
