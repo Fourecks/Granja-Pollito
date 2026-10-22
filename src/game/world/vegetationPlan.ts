@@ -97,5 +97,8 @@ export function createVegetationPlan():VegetationPlan {
   for(const side of [-1,1]){const offset=river.width*2-5;add(i%2?'REEDS_01':'WATER_GRASS',p[0]+side*(b[1]-a[1])/length*offset,p[1]-side*(b[0]-a[0])/length*offset,'shore',false,true);}
  }
  for(let i=0;i<3000;i++){const x=360+random()*840,y=1040+random()*600;add(random()<.3?'LILY_FLOWER':'LILY_PAD',x,y,'water',true,true);}
+ // Keep the lake approach readable: relocate the deterministic moss rock that visually sits on the path after duck-east-bridge.
+ const pathRockIndex=plants.findIndex(p=>p.name==='ROCK_MOSS'&&p.x===425&&p.y===1471);
+ if(pathRockIndex>=0){const p=plants[pathRockIndex],obstacleIndex=plants.slice(0,pathRockIndex).filter(v=>v.solid).length;p.x=345;p.y=1450;obstacles[obstacleIndex]=footprint(p);}
  return {plants,obstacles};
 }
