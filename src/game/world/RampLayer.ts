@@ -67,44 +67,75 @@ export class RampLayer {
  }
  private beachStaircase(scene:Phaser.Scene,ramp:(typeof ramps)[number]){
   const dx=ramp.to[0]-ramp.from[0],dy=ramp.to[1]-ramp.from[1],length=Math.hypot(dx,dy),ux=dx/length,uy=dy/length,nx=-uy,ny=ux;
-  const outerHalf=ramp.id==='beach-east-steps'?27:26,wall=7,innerHalf=outerHalf-wall,pad=8;
+  // Reach deliberately into the upper road and lower beach so the staircase never stops at the cliff seam.
+  const upperPad=14,lowerPad=24,outerHalf=ramp.id==='beach-east-steps'?29:28,wall=8,innerHalf=outerHalf-wall;
   const corners=[
-   [ramp.from[0]-ux*pad+nx*outerHalf,ramp.from[1]-uy*pad+ny*outerHalf],
-   [ramp.from[0]-ux*pad-nx*outerHalf,ramp.from[1]-uy*pad-ny*outerHalf],
-   [ramp.to[0]+ux*pad+nx*outerHalf,ramp.to[1]+uy*pad+ny*outerHalf],
-   [ramp.to[0]+ux*pad-nx*outerHalf,ramp.to[1]+uy*pad-ny*outerHalf],
+   [ramp.from[0]-ux*upperPad+nx*outerHalf,ramp.from[1]-uy*upperPad+ny*outerHalf],
+   [ramp.from[0]-ux*upperPad-nx*outerHalf,ramp.from[1]-uy*upperPad-ny*outerHalf],
+   [ramp.to[0]+ux*lowerPad+nx*outerHalf,ramp.to[1]+uy*lowerPad+ny*outerHalf],
+   [ramp.to[0]+ux*lowerPad-nx*outerHalf,ramp.to[1]+uy*lowerPad-ny*outerHalf],
   ];
-  const left=Math.floor(Math.min(...corners.map(q=>q[0])))-2,top=Math.floor(Math.min(...corners.map(q=>q[1])))-2,right=Math.ceil(Math.max(...corners.map(q=>q[0])))+2,bottom=Math.ceil(Math.max(...corners.map(q=>q[1])))+4;
+  const left=Math.floor(Math.min(...corners.map(q=>q[0])))-6,top=Math.floor(Math.min(...corners.map(q=>q[1])))-6,right=Math.ceil(Math.max(...corners.map(q=>q[0])))+8,bottom=Math.ceil(Math.max(...corners.map(q=>q[1])))+10;
   const c=document.createElement('canvas');c.width=right-left+1;c.height=bottom-top+1;const ctx=c.getContext('2d')!,data=ctx.createImageData(c.width,c.height);
   for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++){
    const wx=left+x,wy=top+y,vx=wx-ramp.from[0],vy=wy-ramp.from[1],along=vx*ux+vy*uy,across=vx*nx+vy*ny,aa=Math.abs(across);
-   if(along<-pad||along>length+pad||aa>outerHalf)continue;
+   if(along<-upperPad||along>length+lowerPad||aa>outerHalf)continue;
    const j=(y*c.width+x)*4,noise=((x*13+y*29)%7)-3;let color:number[];
-   const endFade=along<0||along>length;
+   const landing=along<0||along>length;
    if(aa>innerHalf){
-    const block=((Math.floor((along+pad)/9)+Math.floor((aa-innerHalf)/4))&1)===0;
-    color=block?[151+noise,145+noise,130+noise]:[127+noise,123+noise,111+noise];
-    if(aa>outerHalf-2)color=color.map(v=>v-32);
-    else if(aa<innerHalf+2)color=color.map(v=>v+18);
-    if(((Math.floor((along+pad)/9))%3===0)&&aa>innerHalf+2&&aa<outerHalf-1)color=color.map(v=>v-8);
+    const block=((Math.floor((along+upperPad)/9)+Math.floor((aa-innerHalf)/4))&1)===0;
+    color=block?[150+noise,144+noise,129+noise]:[126+noise,121+noise,109+noise];
+    if(aa>outerHalf-2)color=color.map(v=>v-34);
+    else if(aa<innerHalf+2)color=color.map(v=>v+14);
    }else{
-    const step=((along+pad)%10+10)%10;
-    if(step<2)color=[72,70,64];
-    else if(step<4)color=[121+noise,116+noise,104+noise];
-    else color=[194+noise,183+noise,157+noise];
+    const step=((along+upperPad)%10+10)%10;
+    if(landing){
+     // Flat stone landing: visually bridges the tan road and beach into the staircase.
+     color=[184+noise,173+noise,147+noise];
+     if(((Math.floor((along+upperPad)/8))&1)===0&&step<2)color=color.map(v=>v-12);
+    }else if(step<2)color=[69,67,62];
+    else if(step<4)color=[118+noise,113+noise,101+noise];
+    else color=[196+noise,184+noise,157+noise];
     if(aa>innerHalf-2)color=color.map(v=>v-18);
-    if(step===4)color=color.map(v=>v+10);
-    if(((Math.floor((along+pad)/10))&1)===0&&step>5&&step<8)color=color.map(v=>v+3);
+    if(!landing&&step===4)color=color.map(v=>v+11);
    }
-   if(endFade)color=color.map(v=>v-6);
    data.data.set([...color,255],j);
   }
   ctx.putImageData(data,0,0);
-  // Strong pixel-art masonry caps make the side walls read as raised stone rails rather than flat stripes.
-  ctx.globalAlpha=.9;ctx.fillStyle='rgba(222,211,183,.75)';
-  for(let a=2;a<length-2;a+=10)for(const side of [-1,1]){const qx=ramp.from[0]+ux*a+nx*side*(innerHalf+2)-left,qy=ramp.from[1]+uy*a+ny*side*(innerHalf+2)-top;ctx.fillRect(Math.round(qx)-2,Math.round(qy)-1,4,1);}
+
+  // Raised 3D parapets: dark front/side face, stone body, then a bright cap shifted upward.
+  const drawRail=(side:number)=>{
+   const center=innerHalf+wall*.52;
+   ctx.lineCap='square';ctx.lineJoin='miter';
+   const stroke=(offsetY:number,width:number,color:string)=>{
+    ctx.beginPath();
+    const a0=-upperPad,a1=length+lowerPad;
+    const x0=ramp.from[0]+ux*a0+nx*side*center-left,y0=ramp.from[1]+uy*a0+ny*side*center-top+offsetY;
+    const x1=ramp.from[0]+ux*a1+nx*side*center-left,y1=ramp.from[1]+uy*a1+ny*side*center-top+offsetY;
+    ctx.moveTo(Math.round(x0),Math.round(y0));ctx.lineTo(Math.round(x1),Math.round(y1));ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();
+   };
+   stroke(5,wall+5,'rgba(48,45,40,.48)'); // cast/front shadow
+   stroke(3,wall+2,'rgb(91,87,79)');      // vertical face
+   stroke(0,wall,'rgb(147,141,126)');      // wall body
+   stroke(-2,Math.max(3,wall-3),'rgb(210,199,173)'); // top cap
+   stroke(-3,2,'rgb(235,222,190)');        // highlight
+   for(let a=-upperPad+4;a<length+lowerPad-2;a+=10){
+    const qx=ramp.from[0]+ux*a+nx*side*center-left,qy=ramp.from[1]+uy*a+ny*side*center-top;
+    ctx.fillStyle='rgba(89,84,76,.75)';ctx.fillRect(Math.round(qx)-2,Math.round(qy)-1,4,1);
+   }
+  };
+  drawRail(-1);drawRail(1);
+
+  // End pillars make the rail terminate as architecture instead of a painted stripe.
+  for(const a of [-upperPad+3,length+lowerPad-4])for(const side of [-1,1]){
+   const qx=ramp.from[0]+ux*a+nx*side*(innerHalf+wall*.52)-left,qy=ramp.from[1]+uy*a+ny*side*(innerHalf+wall*.52)-top;
+   ctx.fillStyle='rgba(54,51,46,.42)';ctx.fillRect(Math.round(qx)-5,Math.round(qy)+1,10,8);
+   ctx.fillStyle='rgb(132,127,115)';ctx.fillRect(Math.round(qx)-5,Math.round(qy)-3,10,8);
+   ctx.fillStyle='rgb(220,208,180)';ctx.fillRect(Math.round(qx)-4,Math.round(qy)-5,8,3);
+  }
+
   const key=`beach-staircase-${ramp.id}`;if(scene.textures.exists(key))scene.textures.remove(key);scene.textures.addCanvas(key,c);
-  this.objects.push(scene.add.image(left,top,key).setOrigin(0).setDepth(-15.55).setData('terrainPassage',ramp.id).setData('beachStaircase',true));
+  this.objects.push(scene.add.image(left,top,key).setOrigin(0).setDepth(-15.45).setData('terrainPassage',ramp.id).setData('beachStaircase',true));
  }
  update(view:Phaser.Geom.Rectangle){for(const image of this.objects)image.setVisible(Phaser.Geom.Rectangle.Overlaps(view,image.getBounds()));}
  get diagnostics(){return {stairs:this.objects.length,bridgeRails:0,clippedToHistoricalFaces:true};}
