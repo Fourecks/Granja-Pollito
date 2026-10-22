@@ -2,7 +2,8 @@ import Phaser from 'phaser';
 import { ramps, bridges, cliffFaces } from './mapConfig';
 import { inside } from '../navigation';
 import { cliffFaceColor, type WorldMasks } from './terrain';
-const pathWidths:Record<string,number>={'north-steps':30,'forest-pass':24,'west-pass':22,'coop-steps':24,'home-steps':24,'beach-west-steps':22,'beach-east-steps':36,'pier-steps':26};
+const pathWidths:Record<string,number>={'north-steps':30,'forest-pass':24,'west-pass':22,'coop-steps':24,'home-steps':24,'beach-west-steps':30,'beach-east-steps':32,'pier-steps':26};
+const beachRamps=new Set(['beach-west-steps','beach-east-steps']);
 /** Historical terrain passages are slopes/stairs, not bridges. Clip steps to the actual cliff. */
 export class RampLayer {
  private objects:Phaser.GameObjects.Image[]=[];
@@ -27,12 +28,15 @@ export class RampLayer {
      image.data.set([...cliffFaceColor(Math.floor(wx/2),Math.floor(wy/2),masks),255],j);
      continue;
     }
-    const step=connected?((along+12)%9+9)%9:((along%8)+8)%8;let color=step<2?[94,88,72]:step<4?[177,164,137]:[145+noise,137+noise,114+noise];
+    const beach=beachRamps.has(ramp.id),period=beach?12:8,step=connected?((along+12)%9+9)%9:((along%period)+period)%period;
+    // Beach descents read as terraced earthen ramps: broad rounded bands cut into the cliff, not a continuation of the tan road.
+    let color=beach?(step<2?[91,86,72]:step<5?[151+noise,143+noise,120+noise]:[128+noise,122+noise,103+noise]):step<2?[94,88,72]:step<4?[177,164,137]:[145+noise,137+noise,114+noise];
     if(wood){const span=Math.max(4,wood.width-32),rows=Math.max(4,Math.floor(wood.height/5)-18),sx=16+((Math.floor((across+80)*5)%span)+span)%span,sy=8+((Math.floor((along+100)*3)%rows)+rows)%rows,k=(sy*wood.width+sx)*4;
      const base=wood.pixels[k+3]<128?[166,105,45]:[wood.pixels[k],wood.pixels[k+1],wood.pixels[k+2]],shade=step<1?-46:step<2?8:0;color=base.map(v=>Math.max(0,Math.min(255,v+shade)));
     }
     if(!connected){
      const edge=pathWidths[ramp.id]/2-Math.abs(across);
+     if(beach&&edge<5)color=color.map(v=>v-(edge<2?30:14));
      if(edge<2)color=color.map(v=>v-22);
      else if(edge<4&&step>=4)color=color.map(v=>v-8);
      if(step>=4&&(Math.floor(wx/4)*17+Math.floor(wy/4)*31)%47===0)color=color.map(v=>v-12);
