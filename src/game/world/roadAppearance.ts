@@ -1,8 +1,10 @@
-import { MAP, roads, curve } from './mapConfig';
+import { MAP, roads, ramps, curve } from './mapConfig';
 import type { Polygon } from '../navigation';
 import { bridgePlans, bridgePoint } from './bridgePlan';
 import { bridgeGeometry } from './bridgeGeometry';
 import type { WorldMasks } from './terrain';
+
+function insidePolygon(x:number,y:number,shape:Polygon){let inside=false;for(let i=0,j=shape.length-1;i<shape.length;j=i++){const [xi,yi]=shape[i],[xj,yj]=shape[j];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)inside=!inside;}return inside;}
 /** Rendering corrections only: historical routes, collision and parcel masks stay intact. */
 export const roadTieIns:Array<{id:string;line:Polygon;width:number;destination:string}>=[
  {id:'west-shore-loop',line:curve([[192,753],[195,736],[203,721]],12),width:22,destination:'ducks-lake / west-coast'},
@@ -17,6 +19,12 @@ export function visualRoadMask(surfaces:Uint8ClampedArray,masks?:WorldMasks){
  }
  const pixels=ctx.getImageData(0,0,c.width,c.height).data;
  for(let i=0;i<pixels.length;i+=4){const filled=pixels[i+3]>127&&surfaces[i]!==5;pixels[i]=filled?1:0;pixels[i+3]=filled?255:0;}
+ // The two south-coast passages are terrain ramps, not tan roads painted over the cliff.
+ // Remove the road material only inside their authored corridor; navigation remains unchanged.
+ for(const ramp of ramps.filter(r=>r.id==='beach-west-steps'||r.id==='beach-east-steps')){
+  const xs=ramp.shape.map(q=>q[0]/2),ys=ramp.shape.map(q=>q[1]/2),left=Math.max(0,Math.floor(Math.min(...xs))),right=Math.min(c.width-1,Math.ceil(Math.max(...xs))),top=Math.max(0,Math.floor(Math.min(...ys))),bottom=Math.min(c.height-1,Math.ceil(Math.max(...ys)));
+  for(let y=top;y<=bottom;y++)for(let x=left;x<=right;x++)if(insidePolygon(x*2,y*2,ramp.shape)){const i=(y*c.width+x)*4;pixels[i]=0;pixels[i+3]=0;}
+ }
  if(masks)for(const p of bridgePlans){
   if(p.crossing.kind==='pier')continue;
   const g=bridgeGeometry(p,masks);
