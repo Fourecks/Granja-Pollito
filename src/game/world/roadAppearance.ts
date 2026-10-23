@@ -10,6 +10,9 @@ export const roadTieIns:Array<{id:string;line:Polygon;width:number;destination:s
  {id:'west-shore-loop',line:curve([[192,753],[195,736],[203,721]],12),width:22,destination:'ducks-lake / west-coast'},
  {id:'forest-logging-access',line:curve([[491,52],[500,65],[503,77]],12),width:22,destination:'existing stump at (1020,153)'},
  {id:'east-coast-access',line:curve([[1507,779],[1509,790],[1510,795]],12),width:24,destination:'existing coastal sand above the cliff'},
+ // Continuous upper promenade from both beach stair heads into the existing inland paths.
+ // This is visual road material only; it does not change navigation/collisions.
+ {id:'beach-cliff-promenade',line:curve([[425,753],[401,783],[365,814],[405,823],[455,833],[505,837],[530,820],[555,804]],18),width:30,destination:'island-beach / plaza-beach'},
 ];
 export function visualRoadMask(surfaces:Uint8ClampedArray,masks?:WorldMasks){
  const c=document.createElement('canvas');c.width=MAP.width/2;c.height=MAP.height/2;

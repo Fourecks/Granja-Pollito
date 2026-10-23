@@ -62,13 +62,16 @@ export class RampLayer {
    }
    ctx.putImageData(image,0,0);const key=`terrain-stairs-${ramp.id}`;scene.textures.addCanvas(key,c);
    this.objects.push(scene.add.image(left,top,key).setOrigin(0).setScale(pixel).setDepth(-15.8).setData('terrainPassage',ramp.id).setData('stairPixels',stairPixels).setData('integratedBridge',connected?.id??null));
-   if(beachRamps.has(ramp.id))this.beachStaircase(scene,ramp);
+   if(beachRamps.has(ramp.id))this.beachStaircase(scene,ramp,masks);
   }
  }
- private beachStaircase(scene:Phaser.Scene,ramp:(typeof ramps)[number]){
+ private beachStaircase(scene:Phaser.Scene,ramp:(typeof ramps)[number],masks:WorldMasks){
   const dx=ramp.to[0]-ramp.from[0],dy=ramp.to[1]-ramp.from[1],length=Math.hypot(dx,dy),ux=dx/length,uy=dy/length,nx=-uy,ny=ux;
-  // Reach deliberately into the upper road and lower beach so the staircase never stops at the cliff seam.
-  const upperPad=8,lowerPad=12,outerHalf=ramp.id==='beach-east-steps'?21:20,wall=5,innerHalf=outerHalf-wall;
+  // Match the reference: the masonry exists only across the cliff face. Roads/grass and beach stay uncovered.
+  const wallMask=masks.cliffWalls??masks.cliffs, samples:number[]=[];
+  for(let a=0;a<=length;a+=1){const wx=ramp.from[0]+ux*a,wy=ramp.from[1]+uy*a,i=(Math.floor(wy/2)*1536+Math.floor(wx/2))*4;if(wallMask[i+3]>127)samples.push(a);}
+  const cliffStart=samples.length?Math.max(0,Math.min(...samples)-1):0,cliffEnd=samples.length?Math.min(length,Math.max(...samples)+1):length;
+  const upperPad=-cliffStart,lowerPad=cliffEnd-length,outerHalf=ramp.id==='beach-east-steps'?17:16,wall=4,innerHalf=outerHalf-wall;
   const corners=[
    [ramp.from[0]-ux*upperPad+nx*outerHalf,ramp.from[1]-uy*upperPad+ny*outerHalf],
    [ramp.from[0]-ux*upperPad-nx*outerHalf,ramp.from[1]-uy*upperPad-ny*outerHalf],
