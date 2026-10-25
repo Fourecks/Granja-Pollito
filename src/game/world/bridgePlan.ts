@@ -3,8 +3,8 @@ export type BridgeStyle='rustic'|'rope'|'stone'|'arched'|'footwalk';
 export interface BridgePlan {crossing:Crossing;style:BridgeStyle;length:number;width:number;ux:number;uy:number;nx:number;ny:number;postHeight:number;postSpacing:number;}
 const variants:Record<string,BridgeStyle>={
  'north-bridge':'rope','plaza-bridge':'stone','panda-bridge':'rustic','duck-bridge':'rope',
- 'duck-east-bridge':'rustic','lake-island-bridge':'rope','beach-island-bridge':'stone',
- 'south-bridge':'stone','east-bridge':'rustic','fishing-pier':'footwalk',
+ 'duck-east-bridge':'rustic','lake-island-bridge':'rope','beach-island-bridge':'rustic',
+ 'south-bridge':'rustic','east-bridge':'rustic','fishing-pier':'footwalk',
 };
 /** Deck and navigation share the narrow path-width polygon; components keep upright perspective. */
 export function bridgePlan(crossing:Crossing):BridgePlan {

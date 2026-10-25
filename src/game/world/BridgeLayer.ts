@@ -43,45 +43,27 @@ export class BridgeLayer {
  }
  private image(key:string,c:HTMLCanvasElement,x:number,y:number,depth:number,part:string){if(this.scene.textures.exists(key))this.scene.textures.remove(key);this.scene.textures.addCanvas(key,c);const image=this.scene.add.image(x,y,key).setOrigin(0).setScale(1).setDepth(depth).setData('bridgePart',part);this.objects.push(image);return image;}
  private floor(p:BridgePlan,geometry:BridgeGeometry){
-  // Build the canvas from the rendered geometry, not only the historical crossing polygon: stone thresholds may extend onto dry road.
-  const ends=[bridgePoint(p,geometry.start,-p.width/2),bridgePoint(p,geometry.start,p.width/2),bridgePoint(p,geometry.end,-p.width/2),bridgePoint(p,geometry.end,p.width/2)];
-  const xs=ends.map(v=>v.x),ys=ends.map(v=>v.y),left=Math.floor(Math.min(...xs))-4,top=Math.floor(Math.min(...ys))-4,w=Math.ceil(Math.max(...xs))-left+6,h=Math.ceil(Math.max(...ys))-top+10;
-  const stone=p.style==='stone'||p.style==='arched';
+  const xs=p.crossing.shape.map(v=>v[0]),ys=p.crossing.shape.map(v=>v[1]),left=Math.floor(Math.min(...xs))-3,top=Math.floor(Math.min(...ys))-3,w=Math.ceil(Math.max(...xs))-left+4,h=Math.ceil(Math.max(...ys))-top+8;
   const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d')!,data=ctx.createImageData(w,h);
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
    const wx=left+x,wy=top+y;if(cliffFaces.some(face=>inside([wx,wy],face)))continue;
    const vx=wx-p.crossing.from[0],vy=wy-p.crossing.from[1],a=vx*p.ux+vy*p.uy;
-   const across0=(wx-p.crossing.from[0])*p.nx+(wy-p.crossing.from[1])*p.ny;
-   const inDeck=a>=geometry.start&&a<=geometry.end&&Math.abs(across0)<=p.width/2;
-   const isFloor=inDeck&&(stone||inside([wx,wy],p.crossing.shape)),shadow=a>=geometry.start&&a<=geometry.end&&Math.abs(across0)<=p.width/2&&(!stone?inside([wx-2,wy-5],p.crossing.shape):true);if(!isFloor&&!shadow)continue;
+   const isFloor=a>=geometry.start&&a<=geometry.end&&inside([wx,wy],p.crossing.shape),shadow=a>=geometry.start&&a<=geometry.end&&inside([wx-2,wy-5],p.crossing.shape);if(!isFloor&&!shadow)continue;
    const j=(y*w+x)*4;if(!isFloor){data.data.set([32,43,37,72],j);continue;}
    const dx=wx-p.crossing.from[0],dy=wy-p.crossing.from[1],along=dx*p.ux+dy*p.uy,across=dx*p.nx+dy*p.ny;
-   const seam=!stone&&((along+12)%9+9)%9<1,edge=Math.abs(across)>p.width/2-2;
-   let rgb=this.pixel(p,across+80,along+100,seam?-46:edge?-22:0);
-   if(stone){
-    // Larger blocks on larger crossings, with a darker perimeter and restrained mortar: coherent scale at every bridge width.
-    const block=Math.max(7,Math.min(11,Math.round(p.width*.34))),row=Math.floor((along-geometry.start)/block),offset=(row&1)*block*.5;
-    const crossCell=((across+p.width/2+offset)%block+block)%block,alongCell=((along-geometry.start)%block+block)%block;
-    const mortar=crossCell<1.15||alongCell<1.15;
-    const threshold=Math.min(along-geometry.start,geometry.end-along)<2;
-    if(mortar)rgb=rgb.map(v=>Math.max(0,v-26));
-    if(threshold||edge)rgb=rgb.map(v=>Math.max(0,v-16));
-   }
-   data.data.set([...rgb,255],j);
+   const stone=p.style==='stone'||p.style==='arched',seam=!stone&&((along+12)%9+9)%9<1,edge=Math.abs(across)>p.width/2-2;
+   const rgb=this.pixel(p,across+80,along+100,seam?-46:edge?-22:0);data.data.set([...rgb,255],j);
    if(!stone&&Math.floor((along+12)/9)%4===0&&Math.abs(Math.abs(across)-(p.width/2-4))<.7&&((along+11)%9+9)%9<1.7)data.data.set([71,61,44,255],j);
   }
   ctx.putImageData(data,0,0);this.image(`bridge-floor-${p.crossing.id}`,c,left,top,-10,'floor');this.floorCount++;
  }
  private bankContact(p:BridgePlan,g:BridgeGeometry,masks:WorldMasks){
   if(p.crossing.kind==='pier')return;
-  const stone=p.style==='stone'||p.style==='arched';
   for(const [end,sign] of [[g.start,-1],[g.end,1]]){
    const q=bridgePoint(p,end,0),left=Math.floor(q.x-p.width),top=Math.floor(q.y-p.width),size=Math.ceil(p.width*2),c=document.createElement('canvas');c.width=c.height=size;const ctx=c.getContext('2d')!;
    for(let y=0;y<size;y+=2)for(let x=0;x<size;x+=2){const wx=left+x,wy=top+y,i=(Math.floor(wy/2)*1536+Math.floor(wx/2))*4,dx=wx-p.crossing.from[0],dy=wy-p.crossing.from[1],along=(dx*p.ux+dy*p.uy-end)*sign,across=Math.abs(dx*p.nx+dy*p.ny);
-    const contact=stone?7:4;
-    if(masks.water[i+3]||masks.cliffs[i+3]||masks.land[i+3]<128||along<0||along>contact||across>p.width/2)continue;
-    // Soft earth/masonry contact instead of a hard rectangular bridge edge on top of the path.
-    const fade=1-along/contact;ctx.fillStyle=stone?`rgba(92,79,58,${(.15*fade).toFixed(3)})`:along<2?'rgba(43,45,32,.23)':'rgba(98,79,48,.10)';ctx.fillRect(x,y,2,2);
+    if(masks.water[i+3]||masks.cliffs[i+3]||masks.land[i+3]<128||along<0||along>4||across>p.width/2)continue;
+    ctx.fillStyle=along<2?'rgba(43,45,32,.23)':'rgba(98,79,48,.10)';ctx.fillRect(x,y,2,2);
    }
    this.image(`bridge-bank-${p.crossing.id}-${sign}`,c,left,top,-10.1,'bank');
   }
