@@ -15,7 +15,7 @@ export class BridgeLayer {
    const sheet=scene.textures.get(bridgeAtlas(p)),frame=sheet.get('planks'),c=document.createElement('canvas');c.width=frame.cutWidth;c.height=frame.cutHeight;const ctx=c.getContext('2d')!;
    ctx.drawImage(sheet.getSourceImage() as HTMLImageElement,frame.cutX,frame.cutY,frame.cutWidth,frame.cutHeight,0,0,c.width,c.height);
    this.wood.set(p.crossing.id,{pixels:ctx.getImageData(0,0,c.width,c.height).data,width:c.width,height:c.height});
-   const geometry=bridgeGeometry(p,masks);this.floor(p,geometry,masks);this.bankContact(p,geometry,masks);
+   const geometry=bridgeGeometry(p,masks);this.floor(p,geometry);if(p.crossing.kind==='pier')this.piles(p,geometry,masks);this.bankContact(p,geometry,masks);
    if(p.style==='footwalk')continue;
    for(const side of [-1,1]){
     const first=bridgeSocket(p,geometry,0,side),last=bridgeSocket(p,geometry,1,side);
@@ -42,10 +42,9 @@ export class BridgeLayer {
   return base.map(v=>Math.max(0,Math.min(255,v+shade)));
  }
  private image(key:string,c:HTMLCanvasElement,x:number,y:number,depth:number,part:string){if(this.scene.textures.exists(key))this.scene.textures.remove(key);this.scene.textures.addCanvas(key,c);const image=this.scene.add.image(x,y,key).setOrigin(0).setScale(1).setDepth(depth).setData('bridgePart',part);this.objects.push(image);return image;}
- private floor(p:BridgePlan,geometry:BridgeGeometry,masks:WorldMasks){
+ private floor(p:BridgePlan,geometry:BridgeGeometry){
   const xs=p.crossing.shape.map(v=>v[0]),ys=p.crossing.shape.map(v=>v[1]),left=Math.floor(Math.min(...xs))-3,top=Math.floor(Math.min(...ys))-3,w=Math.ceil(Math.max(...xs))-left+4,h=Math.ceil(Math.max(...ys))-top+8+(p.crossing.kind==='pier'?60:0);
   const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d')!,data=ctx.createImageData(w,h);
-  if(p.crossing.kind==='pier')this.piles(p,geometry,masks,data,left,top,w,h);
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
    const wx=left+x,wy=top+y;if(cliffFaces.some(face=>inside([wx,wy],face)))continue;
    const vx=wx-p.crossing.from[0],vy=wy-p.crossing.from[1],a=vx*p.ux+vy*p.uy;
@@ -58,26 +57,37 @@ export class BridgeLayer {
   }
   ctx.putImageData(data,0,0);this.image(`bridge-floor-${p.crossing.id}`,c,left,top,-10,'floor');this.floorCount++;
  }
- private piles(p:BridgePlan,g:BridgeGeometry,masks:WorldMasks,image:ImageData,left:number,top:number,w:number,h:number){
+ private piles(p:BridgePlan,g:BridgeGeometry,masks:WorldMasks){
   const wall=masks.cliffWalls??masks.cliffs;
-  const at=(x:number,y:number)=>{const gx=Math.floor(x/2),gy=Math.floor(y/2);if(gx<0||gy<0||gx>=1536||gy>=1024)return false;const i=(gy*1536+gx)*4;return masks.water[i+3]>127||wall[i+3]>127;};
-  const put=(x:number,y:number,rgb:number[],alpha=255)=>{const ix=Math.round(x-left),iy=Math.round(y-top);if(ix<0||iy<0||ix>=w||iy>=h)return;const i=(iy*w+ix)*4;image.data[i]=rgb[0];image.data[i+1]=rgb[1];image.data[i+2]=rgb[2];image.data[i+3]=alpha;};
-  let rows=0;
-  for(let along=Math.max(g.start+12,8);along<g.end-8;along+=38){
-   const center=bridgePoint(p,along,0);if(!at(center.x,center.y)&&!at(center.x,center.y+10))continue;rows++;
-   const points=[-.31,0,.31].map(side=>bridgePoint(p,along,side*p.width));
-   for(const q of points)for(let dy=0;dy<54;dy+=2)for(let dx=-4;dx<=4;dx++){
-    const x=q.x+dx,y=q.y+dy;if(!at(x,y))continue;
-    const edge=Math.abs(dx)>=3,deep=dy>28;
-    let color=edge?[55,44,31]:dx===-1?[173,116,63]:[116,72,39],alpha=255;
-    if(masks.water[(Math.floor(y/2)*1536+Math.floor(x/2))*4+3]>127&&dy>8){color=deep?[44,85,97]:[70,100,91];alpha=deep?145:210;}
-    if(dy%12===2&&!edge)color=[137,89,46];
-    put(x,y,color,alpha);
+  const w=Math.ceil(p.crossing.shape.reduce((v,q)=>Math.max(v,q[0]),0)-Math.min(...p.crossing.shape.map(q=>q[0])))+8;
+  const h=Math.ceil(p.crossing.shape.reduce((v,q)=>Math.max(v,q[1]),0)-Math.min(...p.crossing.shape.map(q=>q[1])))+100;
+  const left=Math.floor(Math.min(...p.crossing.shape.map(q=>q[0])))-4,top=Math.floor(Math.min(...p.crossing.shape.map(q=>q[1])))-4;
+  const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d')!,image=ctx.createImageData(w,h);
+  const waterAt=(x:number,y:number)=>{const gx=Math.floor(x/2),gy=Math.floor(y/2);if(gx<0||gy<0||gx>=1536||gy>=1024)return false;return masks.water[(gy*1536+gx)*4+3]>127;};
+  const wallAt=(x:number,y:number)=>{const gx=Math.floor(x/2),gy=Math.floor(y/2);if(gx<0||gy<0||gx>=1536||gy>=1024)return false;return wall[(gy*1536+gx)*4+3]>127;};
+  const put=(x:number,y:number,color:number[],alpha:number)=>{const ix=Math.round(x-left),iy=Math.round(y-top);if(ix<0||iy<0||ix>=w||iy>=h)return;const i=(iy*w+ix)*4;image.data[i]=color[0];image.data[i+1]=color[1];image.data[i+2]=color[2];image.data[i+3]=alpha;};
+  let supports=0;
+  // Paired, narrow timber piles sit below the deck. The cliff layer covers their
+  // upper portions; only the sections that emerge into the water remain visible.
+  for(let along=Math.max(g.start+16,8);along<g.end-8;along+=34){
+   const points=[-.32,.32].map(side=>bridgePoint(p,along,side*p.width));
+   for(const q of points){
+    let reachesWater=false;for(let dy=4;dy<=84;dy+=2)if(waterAt(q.x,q.y+dy)){reachesWater=true;break;}
+    if(!reachesWater)continue;supports++;
+    for(let dy=2;dy<=78;dy+=1){
+     const y=q.y+dy,submerged=waterAt(q.x,y),inCliff=wallAt(q.x,y);if(!submerged&&!inCliff)continue;
+     const lengthFade=dy>62?Math.max(.18,1-(dy-62)/18):1;
+     for(let dx=-2;dx<=2;dx++){
+      const edge=Math.abs(dx)===2,color=edge?[57,43,29]:dx===-1?[169,115,62]:[119,75,40];
+      const wetColor=edge?[40,69,72]:dx===-1?[102,144,143]:[61,99,100];
+      put(q.x+dx,y,submerged?wetColor:color,Math.round((submerged?115:255)*lengthFade));
+     }
+    }
+    // A small collar where each pile meets the underside of the deck.
+    for(let dx=-3;dx<=3;dx++)put(q.x+dx,q.y+3,Math.abs(dx)===3?[61,45,30]:[147,95,48],220);
    }
-   // Cross braces connect each row just under the deck, along the bridge width.
-   for(let t=0;t<=1;t+=.035){const q=bridgePoint(p,along,(t-.5)*.62*p.width);for(let dy=14;dy<=18;dy+=2)for(let dx=-2;dx<=2;dx++){const x=q.x+dx,y=q.y+dy;if(at(x,y))put(x,y,dy===14?[164,111,59]:[75,57,36],220);}}
   }
-  this.pileCount+=rows*3;
+  ctx.putImageData(image,0,0);this.image('bridge-piles-fishing-pier',c,left,top,-16.5,'pile');this.pileCount=supports;
  }
  private bankContact(p:BridgePlan,g:BridgeGeometry,masks:WorldMasks){
   if(p.crossing.kind==='pier')return;
