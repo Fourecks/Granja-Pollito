@@ -9,7 +9,7 @@ const variants:Record<string,BridgeStyle>={
 /** Deck and navigation share the narrow path-width polygon; components keep upright perspective. */
 export function bridgePlan(crossing:Crossing):BridgePlan {
  const dx=crossing.to[0]-crossing.from[0],dy=crossing.to[1]-crossing.from[1],length=Math.hypot(dx,dy),ux=dx/length,uy=dy/length;
- const width=Math.hypot(crossing.shape[0][0]-crossing.shape[3][0],crossing.shape[0][1]-crossing.shape[3][1]);
+ const width=crossing.deckWidth??Math.hypot(crossing.shape[0][0]-crossing.shape[3][0],crossing.shape[0][1]-crossing.shape[3][1]);
  const style=variants[crossing.id]??'stone';
  return {crossing,style,length,width,ux,uy,nx:-uy,ny:ux,postHeight:style==='footwalk'?0:style==='stone'||style==='arched'?14:20,postSpacing:140};
 }
