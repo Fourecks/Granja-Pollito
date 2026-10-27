@@ -4,8 +4,9 @@ function load(entry){const code=buildSync({entryPoints:[entry],bundle:true,platf
 const {bridgePlans,bridgePoint}=load('src/game/world/bridgePlan.ts');const {NavigationGrid,inside}=load('src/game/navigation.ts');const {navigation}=load('src/game/world/collisions.ts');const {createVegetationPlan}=load('src/game/world/vegetationPlan.ts');const {waterfalls}=load('src/game/world/mapConfig.ts');
 assert.deepEqual(new Set(bridgePlans.map(p=>p.style)),new Set(['rustic','rope','stone']));
 assert.equal(bridgePlans.find(p=>p.crossing.id==='fishing-pier')?.style,'rustic','The fishing pier must have a proper planked deck, posts and rails.');
+const pier=bridgePlans.find(p=>p.crossing.id==='fishing-pier');assert(pier);assert(Math.abs(pier.ux)<.25,'The fishing pier leaves the south beach close to perpendicular to shore.');assert.equal(navigation.passages.length,9,'Eight stone stairs and the fishing pier cross cliff terrain.');
 const plan=createVegetationPlan(),nav=new NavigationGrid({...navigation,obstacles:[...navigation.obstacles,...plan.obstacles]},7);
-for(const p of bridgePlans){assert(p.width>=18-1e-8&&p.width<=36+1e-8);const route=nav.path(p.crossing.from,p.crossing.to);assert(route.length,`${p.crossing.id} remains connected`);
+for(const p of bridgePlans){if(p.crossing.id==='fishing-pier')assert(p.width>=44-1e-8&&p.width<=52+1e-8,'Fishing pier has a broad walkable deck');else assert(p.width>=18-1e-8&&p.width<=36+1e-8);const route=nav.path(p.crossing.from,p.crossing.to);assert(route.length,`${p.crossing.id} remains connected`);
  for(let n=0;n<=20;n++){const v=bridgePoint(p,p.length*n/20,0);assert(nav.canWalk(v.x,v.y),`Deck center: ${p.crossing.id}`);}
  const mid=bridgePoint(p,p.length*.5,0);assert(inside([mid.x,mid.y],p.crossing.shape));
 }
