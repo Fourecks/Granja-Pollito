@@ -14,6 +14,7 @@ import { SubmergedCliffLayer } from './world/SubmergedCliffLayer';
 import { RampLayer } from './world/RampLayer';
 import { BridgeLayer } from './world/BridgeLayer';
 import { WaterLayer } from './world/water';
+import { FishLayer } from './world/FishLayer';
 import { VegetationLayer } from './world/vegetation';
 import { ActorGrassOcclusionLayer } from './world/actorGrassOcclusion';
 import { WindSystem } from './world/wind';
@@ -26,7 +27,7 @@ export class ExteriorScene extends WorldScene {
  readonly wind=new WindSystem();
  private bridges!:BridgeLayer;private ramps!:RampLayer;private submerged!:SubmergedCliffLayer;
  private actorGrass!:ActorGrassOcclusionLayer;
- private tulips!:TulipFieldLayer;private vegetation!:VegetationLayer;private terrain!:TerrainLayers;private water!:WaterLayer;private diagnosticAt=0;private entering=false;private celebration?:CelebrationEvent;
+ private tulips!:TulipFieldLayer;private vegetation!:VegetationLayer;private terrain!:TerrainLayers;private water!:WaterLayer;private fish!:FishLayer;private diagnosticAt=0;private entering=false;private celebration?:CelebrationEvent;
  constructor(runtime:FarmRuntime){super('Exterior',runtime);}
  preload(){for(const style of ['rustic','stone'])this.load.atlas(`bridge-${style}`,`/assets/bridge-${style}-${style==='stone'?'v2':'v1'}.png`,`/assets/bridge-${style}-${style==='stone'?'v2':'v1'}.json`);for(const kind of ['medium','small'])this.load.atlas(`waterfall-${kind}`,`/assets/waterfall-${kind}-v2.png`,`/assets/waterfall-${kind}-v2.json`);this.load.atlas('water-depth-art','/assets/water-depth-v1.png','/assets/water-depth-v1.json');this.load.image('actors','/assets/actors-v2.webp');this.load.atlas('vegetation','/assets/vegetation-atlas.png','/assets/vegetation-atlas.json');this.load.atlas('tulip-garden','/assets/tulip-garden-atlas.png','/assets/tulip-garden-atlas.json');this.load.atlas('tulip-flowers','/assets/tulip-flowers-v2.png','/assets/tulip-flowers-v2.json');}
  create(){
@@ -35,7 +36,7 @@ export class ExteriorScene extends WorldScene {
   cleanTextureFrames(this,'bridge-stone',['post']);
   cleanTextureFrames(this,'vegetation',this.textures.get('vegetation').getFrameNames().filter(n=>!['LEAVES','PETALS_PINK','PETALS_WHITE','FIREFLY','LILY_PAD','LILY_FLOWER','WATER_GRASS','CATTAILS','REEDS_01','REEDS_02'].includes(n)&&!n.startsWith('GRASS')&&!n.startsWith('WEEDS')));
   cleanTextureFrames(this,'tulip-garden',['BENCH','ARCH','FENCE']);
-  this.terrain=new TerrainLayers(this);this.submerged=new SubmergedCliffLayer(this,this.terrain.masks);this.water=new WaterLayer(this,this.terrain.masks,this.submerged.fade);this.bridges=new BridgeLayer(this,this.terrain.masks);this.ramps=new RampLayer(this,this.terrain.masks);
+  this.terrain=new TerrainLayers(this);this.submerged=new SubmergedCliffLayer(this,this.terrain.masks);this.water=new WaterLayer(this,this.terrain.masks,this.submerged.fade);this.fish=new FishLayer(this,this.terrain.masks);this.bridges=new BridgeLayer(this,this.terrain.masks);this.ramps=new RampLayer(this,this.terrain.masks);
   this.vegetation=new VegetationLayer(this,this.terrain.masks,this.wind,this.water.habitat);
   this.nav=new NavigationGrid({...navigation,obstacles:[...navigation.obstacles,...this.vegetation.plan.obstacles]},7);
   const garden=createTulipFieldPlan(this.vegetation.plan,this.nav);
@@ -55,7 +56,7 @@ export class ExteriorScene extends WorldScene {
    hit.setInteractive(new Phaser.Geom.Polygon(z.shape.map(([x,y])=>({x:x-Math.min(...xs),y:y-Math.min(...ys)}))),Phaser.Geom.Polygon.Contains);
    hit.on('pointerup',()=>{if(!this.controls.moved)this.runtime.props.current.onSelect(z.legacyObject!);});
   }
-  this.game.canvas.dataset.mapVersion='phase-3.5-bridge-junction';this.game.canvas.dataset.mapSize=`${MAP.width}x${MAP.height}`;
+  this.game.canvas.dataset.mapVersion='phase-3.6-fishing-pier';this.game.canvas.dataset.mapSize=`${MAP.width}x${MAP.height}`;
   this.game.canvas.dataset.humanHeight=String(SCALE.humanHeight);
   this.events.once('shutdown',()=>{this.actors=[];});
   this.runtime.loading(false);camera.fadeIn(350);
@@ -75,9 +76,9 @@ export class ExteriorScene extends WorldScene {
  }
  update(time:number,delta:number){
   super.update(time,delta);this.celebration?.update(time,delta);if(!this.scene.isVisible())return;
-  this.terrain.cull();this.water.update(time);this.submerged.update(this.cameras.main.worldView);this.bridges.update(time);this.ramps.update(this.cameras.main.worldView);this.vegetation.update(time,delta);this.tulips.update(time);this.actorGrass.update(this.actors);
+  this.terrain.cull();this.water.update(time);this.fish.update(time,delta,this.cameras.main.worldView);this.submerged.update(this.cameras.main.worldView);this.bridges.update(time);this.ramps.update(this.cameras.main.worldView);this.vegetation.update(time,delta);this.tulips.update(time);this.actorGrass.update(this.actors);
   if(time-this.diagnosticAt>750){this.diagnosticAt=time;const c=this.cameras.main;
-   this.game.canvas.dataset.world=JSON.stringify({version:'phase-3.5-bridge-junction',renderer:this.game.renderer.type,vegetation:this.vegetation.diagnostics,tulipField:this.tulips.diagnostics,fps:Math.round(this.game.loop.actualFps),waterFrame:this.water.animationFrame,water:this.water.diagnostics,bridges:this.bridges.diagnostics,ramps:this.ramps.diagnostics,submerged:this.submerged.diagnostics,actorGrass:this.actorGrass.diagnostics,chunks:this.terrain.objects.length,visibleChunks:this.terrain.objects.filter(o=>o.visible).length,zoom:c.zoom,camera:[Math.round(c.worldView.x),Math.round(c.worldView.y),Math.round(c.worldView.width),Math.round(c.worldView.height)],actors:this.actors.map(a=>({id:a.id,x:Math.round(a.x),y:Math.round(a.y),state:a.state,route:a.route.length,walkable:a.nav.canWalk(a.x,a.y)}))});
+   this.game.canvas.dataset.world=JSON.stringify({version:'phase-3.6-fishing-pier',renderer:this.game.renderer.type,vegetation:this.vegetation.diagnostics,tulipField:this.tulips.diagnostics,fish:this.fish.diagnostics,fps:Math.round(this.game.loop.actualFps),waterFrame:this.water.animationFrame,water:this.water.diagnostics,bridges:this.bridges.diagnostics,ramps:this.ramps.diagnostics,submerged:this.submerged.diagnostics,actorGrass:this.actorGrass.diagnostics,chunks:this.terrain.objects.length,visibleChunks:this.terrain.objects.filter(o=>o.visible).length,zoom:c.zoom,camera:[Math.round(c.worldView.x),Math.round(c.worldView.y),Math.round(c.worldView.width),Math.round(c.worldView.height)],actors:this.actors.map(a=>({id:a.id,x:Math.round(a.x),y:Math.round(a.y),state:a.state,route:a.route.length,walkable:a.nav.canWalk(a.x,a.y)}))});
   }
  }
 }

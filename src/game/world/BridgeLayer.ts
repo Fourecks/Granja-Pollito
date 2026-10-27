@@ -7,7 +7,7 @@ import { cliffFaces } from './mapConfig';
 import { bridgeGeometry, bridgeSocket, type BridgeGeometry } from './bridgeGeometry';
 interface PixelSource {pixels:Uint8ClampedArray;width:number;height:number;}
 export class BridgeLayer {
- private objects:Phaser.GameObjects.Image[]=[];private integration:ObjectIntegrationLayer;private cullAt=0;private floorCount=0;private railCount=0;private postCount=0;
+ private objects:Phaser.GameObjects.Image[]=[];private integration:ObjectIntegrationLayer;private cullAt=0;private floorCount=0;private railCount=0;private postCount=0;private pileCount=0;
  private wood=new Map<string,PixelSource>();
  constructor(private scene:Phaser.Scene,masks:WorldMasks){
   const anchors:IntegrationAnchor[]=[];
@@ -15,7 +15,7 @@ export class BridgeLayer {
    const sheet=scene.textures.get(bridgeAtlas(p)),frame=sheet.get('planks'),c=document.createElement('canvas');c.width=frame.cutWidth;c.height=frame.cutHeight;const ctx=c.getContext('2d')!;
    ctx.drawImage(sheet.getSourceImage() as HTMLImageElement,frame.cutX,frame.cutY,frame.cutWidth,frame.cutHeight,0,0,c.width,c.height);
    this.wood.set(p.crossing.id,{pixels:ctx.getImageData(0,0,c.width,c.height).data,width:c.width,height:c.height});
-   const geometry=bridgeGeometry(p,masks);this.floor(p,geometry);this.bankContact(p,geometry,masks);
+   const geometry=bridgeGeometry(p,masks);this.floor(p,geometry,masks);this.bankContact(p,geometry,masks);
    if(p.style==='footwalk')continue;
    for(const side of [-1,1]){
     const first=bridgeSocket(p,geometry,0,side),last=bridgeSocket(p,geometry,1,side);
@@ -42,20 +42,42 @@ export class BridgeLayer {
   return base.map(v=>Math.max(0,Math.min(255,v+shade)));
  }
  private image(key:string,c:HTMLCanvasElement,x:number,y:number,depth:number,part:string){if(this.scene.textures.exists(key))this.scene.textures.remove(key);this.scene.textures.addCanvas(key,c);const image=this.scene.add.image(x,y,key).setOrigin(0).setScale(1).setDepth(depth).setData('bridgePart',part);this.objects.push(image);return image;}
- private floor(p:BridgePlan,geometry:BridgeGeometry){
-  const xs=p.crossing.shape.map(v=>v[0]),ys=p.crossing.shape.map(v=>v[1]),left=Math.floor(Math.min(...xs))-3,top=Math.floor(Math.min(...ys))-3,w=Math.ceil(Math.max(...xs))-left+4,h=Math.ceil(Math.max(...ys))-top+8;
+ private floor(p:BridgePlan,geometry:BridgeGeometry,masks:WorldMasks){
+  const xs=p.crossing.shape.map(v=>v[0]),ys=p.crossing.shape.map(v=>v[1]),left=Math.floor(Math.min(...xs))-3,top=Math.floor(Math.min(...ys))-3,w=Math.ceil(Math.max(...xs))-left+4,h=Math.ceil(Math.max(...ys))-top+8+(p.crossing.kind==='pier'?60:0);
   const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d')!,data=ctx.createImageData(w,h);
+  if(p.crossing.kind==='pier')this.piles(p,geometry,masks,data,left,top,w,h);
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
    const wx=left+x,wy=top+y;if(cliffFaces.some(face=>inside([wx,wy],face)))continue;
    const vx=wx-p.crossing.from[0],vy=wy-p.crossing.from[1],a=vx*p.ux+vy*p.uy;
    const isFloor=a>=geometry.start&&a<=geometry.end&&inside([wx,wy],p.crossing.shape),shadow=a>=geometry.start&&a<=geometry.end&&inside([wx-2,wy-5],p.crossing.shape);if(!isFloor&&!shadow)continue;
-   const j=(y*w+x)*4;if(!isFloor){data.data.set([32,43,37,72],j);continue;}
+   const j=(y*w+x)*4;if(!isFloor){if(shadow)data.data.set([32,43,37,72],j);continue;}
    const dx=wx-p.crossing.from[0],dy=wy-p.crossing.from[1],along=dx*p.ux+dy*p.uy,across=dx*p.nx+dy*p.ny;
    const stone=p.style==='stone'||p.style==='arched',seam=!stone&&((along+12)%9+9)%9<1,edge=Math.abs(across)>p.width/2-2;
    const rgb=this.pixel(p,across+80,along+100,seam?-46:edge?-22:0);data.data.set([...rgb,255],j);
    if(!stone&&Math.floor((along+12)/9)%4===0&&Math.abs(Math.abs(across)-(p.width/2-4))<.7&&((along+11)%9+9)%9<1.7)data.data.set([71,61,44,255],j);
   }
   ctx.putImageData(data,0,0);this.image(`bridge-floor-${p.crossing.id}`,c,left,top,-10,'floor');this.floorCount++;
+ }
+ private piles(p:BridgePlan,g:BridgeGeometry,masks:WorldMasks,image:ImageData,left:number,top:number,w:number,h:number){
+  const wall=masks.cliffWalls??masks.cliffs;
+  const at=(x:number,y:number)=>{const gx=Math.floor(x/2),gy=Math.floor(y/2);if(gx<0||gy<0||gx>=1536||gy>=1024)return false;const i=(gy*1536+gx)*4;return masks.water[i+3]>127||wall[i+3]>127;};
+  const put=(x:number,y:number,rgb:number[],alpha=255)=>{const ix=Math.round(x-left),iy=Math.round(y-top);if(ix<0||iy<0||ix>=w||iy>=h)return;const i=(iy*w+ix)*4;image.data[i]=rgb[0];image.data[i+1]=rgb[1];image.data[i+2]=rgb[2];image.data[i+3]=alpha;};
+  let rows=0;
+  for(let along=Math.max(g.start+12,8);along<g.end-8;along+=38){
+   const center=bridgePoint(p,along,0);if(!at(center.x,center.y)&&!at(center.x,center.y+10))continue;rows++;
+   const points=[-.31,0,.31].map(side=>bridgePoint(p,along,side*p.width));
+   for(const q of points)for(let dy=0;dy<54;dy+=2)for(let dx=-4;dx<=4;dx++){
+    const x=q.x+dx,y=q.y+dy;if(!at(x,y))continue;
+    const edge=Math.abs(dx)>=3,deep=dy>28;
+    let color=edge?[55,44,31]:dx===-1?[173,116,63]:[116,72,39],alpha=255;
+    if(masks.water[(Math.floor(y/2)*1536+Math.floor(x/2))*4+3]>127&&dy>8){color=deep?[44,85,97]:[70,100,91];alpha=deep?145:210;}
+    if(dy%12===2&&!edge)color=[137,89,46];
+    put(x,y,color,alpha);
+   }
+   // Cross braces connect each row just under the deck, along the bridge width.
+   for(let t=0;t<=1;t+=.035){const q=bridgePoint(p,along,(t-.5)*.62*p.width);for(let dy=14;dy<=18;dy+=2)for(let dx=-2;dx<=2;dx++){const x=q.x+dx,y=q.y+dy;if(at(x,y))put(x,y,dy===14?[164,111,59]:[75,57,36],220);}}
+  }
+  this.pileCount+=rows*3;
  }
  private bankContact(p:BridgePlan,g:BridgeGeometry,masks:WorldMasks){
   if(p.crossing.kind==='pier')return;
@@ -94,5 +116,5 @@ export class BridgeLayer {
  }
 
  update(time:number){const view=this.scene.cameras.main.worldView;if(time>=this.cullAt){this.cullAt=time+160;for(const o of this.objects)o.setVisible(Phaser.Geom.Rectangle.Overlaps(view,o.getBounds()));}this.integration.update(time,view);}
- get diagnostics(){return {styles:Object.fromEntries(['rustic','rope','stone','arched','footwalk'].map(style=>[style,bridgePlans.filter(p=>p.style===style).length])),floors:this.floorCount,rails:this.railCount,posts:this.postCount,objects:this.objects.length,visible:this.objects.filter(i=>i.visible).length,integration:this.integration.diagnostics,rotatedSprites:0};}
+ get diagnostics(){return {styles:Object.fromEntries(['rustic','rope','stone','arched','footwalk'].map(style=>[style,bridgePlans.filter(p=>p.style===style).length])),floors:this.floorCount,rails:this.railCount,posts:this.postCount,pilePosts:this.pileCount,objects:this.objects.length,visible:this.objects.filter(i=>i.visible).length,integration:this.integration.diagnostics,rotatedSprites:0};}
 }

@@ -4,7 +4,7 @@ export interface BridgePlan {crossing:Crossing;style:BridgeStyle;length:number;w
 const variants:Record<string,BridgeStyle>={
  'north-bridge':'rope','plaza-bridge':'stone','panda-bridge':'rustic','duck-bridge':'rope',
  'duck-east-bridge':'rustic','lake-island-bridge':'rope','beach-island-bridge':'rustic',
- 'south-bridge':'rustic','east-bridge':'rustic','fishing-pier':'footwalk',
+ 'south-bridge':'rustic','east-bridge':'rustic','fishing-pier':'rustic',
 };
 /** Deck and navigation share the narrow path-width polygon; components keep upright perspective. */
 export function bridgePlan(crossing:Crossing):BridgePlan {
