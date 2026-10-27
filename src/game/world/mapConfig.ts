@@ -53,10 +53,17 @@ export function ribbon(line:Polygon,width:number,variation=false):Polygon {
 // Springs and terminal pools soften the two inland cut-offs; river joins stay overlapping.
 export const waterPools=[oval(738,391,20,15,7),oval(1220,260,21,16,9)];
 export const rawWater = [sea,lake,...rivers.map(r=>ribbon(r.line,r.width*2)),...waterPools];
-export interface Crossing {id:string; shape:Polygon; from:Point; to:Point; kind:'bridge'|'ramp'|'pier'}
+export interface Crossing {id:string; shape:Polygon; from:Point; to:Point; kind:'bridge'|'ramp'|'pier'; deckWidth?:number}
 const crossing=(id:string,a:Point,b:Point,width:number,kind:Crossing['kind']='bridge'):Crossing=>{
  const from=point(...a),to=point(...b),length=Math.hypot(to[0]-from[0],to[1]-from[1]),dx=(to[0]-from[0])/length*12,dy=(to[1]-from[1])/length*12;
  return {id,shape:corridor([[from[0]-dx,from[1]-dy],[to[0]+dx,to[1]+dy]],kind==='ramp'?width*2:width)[0],from,to,kind};
+};
+const fishingPier=():Crossing=>{
+ const from=point(1400,775),to=point(1370,930),dx=to[0]-from[0],dy=to[1]-from[1],length=Math.hypot(dx,dy),ux=dx/length,uy=dy/length,nx=-uy,ny=ux;
+ const at=(along:number,across:number):Point=>[from[0]+ux*along+nx*across,from[1]+uy*along+ny*across];
+ // Main 48-unit deck with a broad landing where the existing cliff stairs meet it.
+ const shape=[at(-12,24),at(length*.28,24),at(length*.28,48),at(length*.43,48),at(length*.43,24),at(length+12,24),at(length+12,-24),at(length*.43,-24),at(length*.43,-48),at(length*.28,-48),at(length*.28,-24),at(-12,-24)];
+ return {id:'fishing-pier',shape,from,to,kind:'pier',deckWidth:48};
 };
 export const bridges = [
  crossing('north-bridge',[653,155],[707,231],15),
@@ -68,7 +75,8 @@ export const bridges = [
  crossing('beach-island-bridge',[365,822],[425,753],11),
  crossing('south-bridge',[594,680],[573,751],14),
  crossing('east-bridge',[1451,453],[1507,466],12),
- crossing('fishing-pier',[1400,775],[1361,846],13,'pier'),
+ // A broad, straight fishing pier leaves the upper beach and runs almost perpendicular to shore.
+ fishingPier(),
 ];
 export const cliffs = [
  {id:'north-west-ridge',line:curve([[0,118],[65,119],[124,104],[204,102],[296,87],[376,93],[466,120],[533,102]]),height:25},
@@ -129,7 +137,7 @@ export const roads:Road[] = [
  road('lake-island',[[607,620],[614,665],[600,688],[466,692],[425,715]],11,true),
  road('island-beach',[[425,715],[425,753],[365,822],[350,883],[321,888]],11,true),
  road('east-shore',[[1325,485],[1390,512],[1430,486],[1451,453],[1507,466],[1520,480],[1524,563],[1510,628],[1492,680],[1507,779]],12,true),
- road('fishing',[[1399,675],[1370,721],[1400,775],[1361,846]],13,true),
+ road('fishing',[[1399,675],[1370,721],[1400,775],[1370,930]],13,true),
  road('coop-south',[[446,426],[453,456],[466,478],[484,527],[538,568],[607,620]],12,true),
  road('home-south',[[875,609],[939,611],[964,623],[983,678],[1039,712],[1168,637]],12,true),
  road('west-coast',[[140,598],[82,664],[73,710],[123,746],[192,753]],11,true),
