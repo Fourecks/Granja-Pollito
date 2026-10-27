@@ -6,7 +6,7 @@ export const CLIFF_COLLISION = cliffFaces;
 export const navigation:NavigationData = {
  ...MAP,cell:MAP.navigationCell,walkable:[mainland,...islands.map(i=>i.shape),...bridges.map(b=>b.shape)],
  obstacles:CLIFF_COLLISION,terrainObstacles:CLIFF_COLLISION,water:WATER_COLLISION,bridges:bridges.map(b=>b.shape),
- waterIslands:islands.map(i=>i.shape),passages:ramps.map(r=>r.shape),
+ waterIslands:islands.map(i=>i.shape),passages:[...ramps.map(r=>r.shape),...bridges.filter(b=>b.kind==='pier').map(b=>b.shape)],
 };
 export function navigationFor(capabilities:readonly ('LAND'|'WATER')[],obstacles:NavigationData['obstacles']=[]):NavigationData {
  return {...navigation,obstacles:[...navigation.obstacles,...obstacles],swims:capabilities.includes('WATER')};
