@@ -66,7 +66,7 @@ export const bridges = [
  crossing('duck-east-bridge',[224,624],[219,678],12),
  crossing('lake-island-bridge',[466,692],[600,688],11),
  crossing('beach-island-bridge',[365,822],[425,753],11),
- crossing('south-bridge',[594,680],[573,751],24),
+ crossing('south-bridge',[594,680],[573,751],14),
  crossing('east-bridge',[1451,453],[1507,466],12),
  crossing('fishing-pier',[1400,775],[1361,846],13,'pier'),
 ];

@@ -16,7 +16,7 @@ Los diez puentes/muelle y ocho pasos de desnivel utilizan BridgeLayer. Se elimin
 | duck-east-bridge | piedra ligeramente arqueada | 24 |
 | lake-island-bridge | madera con cuerda | 22 |
 | beach-island-bridge | piedra con musgo | 22 |
-| south-bridge | piedra ligeramente arqueada | 36 |
+| south-bridge | madera rústica | 28 |
 | east-bridge | madera rústica | 24 |
 | fishing-pier | pasarela sencilla | 26 |
 | north-steps | paso de piedra | 30 |
