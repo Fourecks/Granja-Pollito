@@ -18,7 +18,7 @@ Los diez puentes/muelle y ocho pasos de desnivel utilizan BridgeLayer. Se elimin
 | beach-island-bridge | piedra con musgo | 22 |
 | south-bridge | madera rústica | 28 |
 | east-bridge | madera rústica | 24 |
-| fishing-pier | muelle rústico con barandas y pilares | 26 |
+| fishing-pier | muelle de madera ancho, perpendicular a la costa, con barandas y pilares | 48 |
 | north-steps | paso de piedra | 30 |
 | forest-pass | paso de piedra | 24 |
 | west-pass | paso de piedra | 22 |
@@ -28,7 +28,7 @@ Los diez puentes/muelle y ocho pasos de desnivel utilizan BridgeLayer. Se elimin
 | beach-east-steps | paso de piedra | 36 |
 | pier-steps | paso de piedra | 26 |
 
-La anchura anterior duplicaba el parámetro de corredor, produciendo tableros de 48–68 unidades. Ahora la anchura coincide con el sendero conectado, 22–36, en arte y navegación. Se mantienen las luces entre orillas: acortar un cruce de lago dejaría agua sin soporte. El muelle de pesca usa barandas y pares de pilares de madera que bajan hasta el agua y se tiñen bajo la superficie. Los cruces menores conservan postes discretos y las pasarelas simples siguen abiertas. Componentes y sombras conservan escala uniforme y perspectiva vertical; ningún sprite de puente completo se gira. Barandas por tramos de hasta 16 unidades, con depth Y local, y aperturas en encuentros entre pasos.
+La anchura anterior duplicaba el parámetro de corredor, produciendo tableros de 48–68 unidades. Los puentes pequeños mantienen 22–36 unidades. El muelle de pesca es una excepción funcional: ahora sale perpendicular a la costa con un tablero de 48 unidades, barandas de madera continuas y postes cuadrados espaciados. El tablero cruza completo sobre la pared rocosa; los pares de pilares quedan detrás del acantilado y reaparecen dentro del agua con transparencia. Los cruces menores conservan postes discretos y las pasarelas simples siguen abiertas. Componentes y sombras conservan escala uniforme y perspectiva vertical; ningún sprite de puente completo se gira.
 
 La capa de peces dibuja seis siluetas pixel-art en cuatro frames de cola. Los peces se mueven dentro de las máscaras del mar, el lago, los ríos y las pozas; su opacidad varía para simular visibilidad bajo la superficie y ocurren saltos y salpicaduras de forma ocasional.
 
