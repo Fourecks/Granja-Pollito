@@ -75,7 +75,8 @@ export function createVegetationPlan():VegetationPlan {
  for(const [cx,cy,rx,ry,biome,names] of groves){const count=biome==='north'?42:biome==='panda'?55:biome==='coast'?14:24;
   for(let i=0;i<count;i++){const angle=random()*Math.PI*2,r=Math.sqrt(random());add(names[Math.floor(random()*names.length)],(cx+Math.cos(angle)*rx*r)*2,(cy+Math.sin(angle)*ry*r)*2,biome);}
  }
- const landmarks:Array<[VegetationName,number,number]>=[['OLD_TREE',830,38],['HOLLOW_TREE',1070,200],['SWING_TREE',750,590],['LANTERN_TREE',330,180],['CHERRY_TREE',440,375],['TREE_BLOSSOM_PINK',920,554],['TREE_BLOSSOM_WHITE',325,355],['TREE_BLOSSOM_PURPLE',1240,570],['TREE_AUTUMN',1070,725],['TREE_LARGE',1310,165]];
+ // The pink tree sits east of the jefa-house roof so its canopy clears the facade.
+ const landmarks:Array<[VegetationName,number,number]>=[['OLD_TREE',830,38],['HOLLOW_TREE',1070,200],['SWING_TREE',750,590],['LANTERN_TREE',330,180],['CHERRY_TREE',440,375],['TREE_BLOSSOM_PINK',960,500],['TREE_BLOSSOM_WHITE',325,355],['TREE_BLOSSOM_PURPLE',1240,570],['TREE_AUTUMN',1070,725],['TREE_LARGE',1310,165]];
  for(const [name,x,y] of landmarks){
   const before=plants.length;add(name,x*2,y*2,'landmark');
   for(let radius=24;plants.length===before&&radius<=220;radius+=24)for(let i=0;i<16&&plants.length===before;i++){
