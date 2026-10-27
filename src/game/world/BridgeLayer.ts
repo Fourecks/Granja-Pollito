@@ -20,10 +20,10 @@ export class BridgeLayer {
    for(const side of [-1,1]){
     const first=bridgeSocket(p,geometry,0,side),last=bridgeSocket(p,geometry,1,side);
     const steps=Math.ceil(Math.hypot(last.foot.x-first.foot.x,last.foot.y-first.foot.y)/16);
-    for(let k=0;k<steps;k++)this.rail(p,geometry,side,k/steps,(k+1)/steps);
+    for(let k=0;k<steps;k++)p.crossing.kind==='pier'?this.pierRail(p,geometry,side,k/steps,(k+1)/steps):this.rail(p,geometry,side,k/steps,(k+1)/steps);
     for(const socket of [first,last]){
      const pos=socket.foot;
-     if(p.style==='rustic'||p.style==='rope')this.post(p,socket);
+     if((p.style==='rustic'||p.style==='rope')&&p.crossing.kind!=='pier')this.post(p,socket);
      anchors.push({id:`${p.crossing.id}-${side}-${pos.x}`,x:pos.x,y:pos.y+2,depth:pos.y+.2,span:12,cover:4,kind:'plant'});
     }
    }
@@ -46,7 +46,7 @@ export class BridgeLayer {
   const xs=p.crossing.shape.map(v=>v[0]),ys=p.crossing.shape.map(v=>v[1]),left=Math.floor(Math.min(...xs))-3,top=Math.floor(Math.min(...ys))-3,w=Math.ceil(Math.max(...xs))-left+4,h=Math.ceil(Math.max(...ys))-top+8+(p.crossing.kind==='pier'?60:0);
   const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d')!,data=ctx.createImageData(w,h);
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-   const wx=left+x,wy=top+y;if(cliffFaces.some(face=>inside([wx,wy],face)))continue;
+   const wx=left+x,wy=top+y;if(p.crossing.kind!=='pier'&&cliffFaces.some(face=>inside([wx,wy],face)))continue;
    const vx=wx-p.crossing.from[0],vy=wy-p.crossing.from[1],a=vx*p.ux+vy*p.uy;
    const isFloor=a>=geometry.start&&a<=geometry.end&&inside([wx,wy],p.crossing.shape),shadow=a>=geometry.start&&a<=geometry.end&&inside([wx-2,wy-5],p.crossing.shape);if(!isFloor&&!shadow)continue;
    const j=(y*w+x)*4;if(!isFloor){if(shadow)data.data.set([32,43,37,72],j);continue;}
@@ -123,6 +123,28 @@ export class BridgeLayer {
   }
   const footY=start.foot.y+(end.foot.y-start.foot.y)*(t0+t1)/2;
   this.image(`bridge-rail-${p.crossing.id}-${side}-${t0}`,c,left,top,footY+.05,'rail');this.railCount++;
+ }
+
+ /** A fishing pier uses a connected timber handrail with regularly spaced uprights. */
+ private pierRail(p:BridgePlan,g:BridgeGeometry,side:number,t0:number,t1:number){
+  const start=bridgeSocket(p,g,0,side).foot,end=bridgeSocket(p,g,1,side).foot,lift=Math.max(12,g.lift),dx=end.x-start.x,dy=end.y-start.y;
+  const at=(t:number,height=0)=>({x:start.x+dx*t,y:start.y+dy*t-height});
+  const a=at(t0),b=at(t1),left=Math.floor(Math.min(a.x,b.x))-7,top=Math.floor(Math.min(a.y,b.y))-lift-7,w=Math.abs(b.x-a.x)+15,h=Math.abs(b.y-a.y)+lift+15;
+  const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d')!;ctx.imageSmoothingEnabled=false;
+  const beam=(height:number,width:number,outer:string,inner:string,shine:string)=>{
+   const p0=at(t0,height),p1=at(t1,height);ctx.beginPath();ctx.moveTo(p0.x-left,p0.y-top);ctx.lineTo(p1.x-left,p1.y-top);ctx.lineCap='square';ctx.lineJoin='miter';ctx.strokeStyle=outer;ctx.lineWidth=width+2;ctx.stroke();ctx.strokeStyle=inner;ctx.lineWidth=width;ctx.stroke();ctx.beginPath();ctx.moveTo(p0.x-left,p0.y-top-1);ctx.lineTo(p1.x-left,p1.y-top-1);ctx.strokeStyle=shine;ctx.lineWidth=1;ctx.stroke();
+  };
+  // Two solid rails follow the bridge edge; squared posts tie them back to the deck.
+  beam(lift,4,'#4e321d','#a8622b','#e3a353');beam(lift*.48,2,'#51341e','#8d5328','#ce8740');
+  const along=t0*Math.hypot(dx,dy),postSpacing=30;
+  if(Math.abs(along/postSpacing-Math.round(along/postSpacing))*postSpacing<8){
+   const q=at(t0,lift),x=q.x-left,y=q.y-top;
+   ctx.fillStyle='#49301c';ctx.fillRect(Math.round(x)-3,Math.round(y),6,Math.max(4,Math.round(lift)));
+   ctx.fillStyle='#a45e2b';ctx.fillRect(Math.round(x)-1,Math.round(y)+1,3,Math.max(2,Math.round(lift)-2));
+   ctx.fillStyle='#e0a04d';ctx.fillRect(Math.round(x)-1,Math.round(y)+1,1,Math.max(2,Math.round(lift)-3));
+  }
+  if(t1>=.999){const q=at(t1,lift),x=q.x-left,y=q.y-top;ctx.fillStyle='#49301c';ctx.fillRect(Math.round(x)-3,Math.round(y),6,Math.max(4,Math.round(lift)));ctx.fillStyle='#a45e2b';ctx.fillRect(Math.round(x)-1,Math.round(y)+1,3,Math.max(2,Math.round(lift)-2));}
+  const footY=start.y+dy*(t0+t1)/2;this.image(`pier-rail-${side}-${t0}`,c,left,top,footY+.08,'rail');this.railCount++;
  }
 
  update(time:number){const view=this.scene.cameras.main.worldView;if(time>=this.cullAt){this.cullAt=time+160;for(const o of this.objects)o.setVisible(Phaser.Geom.Rectangle.Overlaps(view,o.getBounds()));}this.integration.update(time,view);}
