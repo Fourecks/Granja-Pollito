@@ -14,4 +14,4 @@ for(const f of map.waterfalls){
  assert(inside([x,y],map.cliffFaces[f.cliffIndex]),`${f.id}: water falls along the wall`);assert(map.rawWater.some(p=>inside([x,y],p)),`${f.id}: preserve the original water course`);}
  const beyond=[f.foot[0],f.foot[1]+1];assert(!inside(beyond,map.cliffFaces[f.cliffIndex]),`${f.id}: pool below the lower edge`);
 }
-console.log('OK: historical topography unchanged in 14 geometry groups, eight terrain passages, ten bridges, four falls on real rock-face descents plus the approved historical north visual drop.');
+console.log('OK: historical topography unchanged in 14 geometry groups, eight terrain passages plus the fishing pier, ten bridges, four falls on real rock-face descents plus the approved historical north visual drop.');

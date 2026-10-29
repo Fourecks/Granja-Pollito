@@ -6,6 +6,8 @@ try {
  const {NavigationGrid,inside,rectangle}=require(path.join(output,'game/navigation.js'));
  const {navigation,navigationFor}=require(path.join(output,'game/world/collisions.js'));
  const {zones,zoneById}=require(path.join(output,'game/world/zones.js'));
+ const {plazaAccess}=require(path.join(output,'game/world/plazaPlan.js'));
+ const zoneAccess=z=>['greenhouseArea','centralPlaza'].includes(z.id)?z.approach:z.center;
  const {roads,bridges,ramps,cliffFaces,MAP,point}=require(path.join(output,'game/world/mapConfig.js'));
  const {workers,taskRoutes}=require(path.join(output,'data/routes.js'));
  const {interiors}=require(path.join(output,'data/interiors.js'));
@@ -56,16 +58,16 @@ try {
   outer:for(let i=1;i<first.line.length;i++)for(let j=1;j<second.line.length;j++){const [p,q]=closest(first.line[i-1],first.line[i],second.line[j-1],second.line[j]);if(Math.hypot(p[0]-q[0],p[1]-q[1])<=clearance&&nav.segment(p,q)){link(a,b);break outer;}}
  }
  for(let z=0;z<zones.length;z++){
-  for(let r=0;r<roads.length;r++){const road=roads[r],candidates=[...road.line,...road.line.slice(1).map((p,i)=>projection(zones[z].center,road.line[i],p))];if(candidates.some(p=>inside(p,zones[z].shape)&&nav.segment(zones[z].center,p)))link(roads.length+z,r);}
-  for(let other=0;other<z;other++)if((inside(zones[z].center,zones[other].shape)||inside(zones[other].center,zones[z].shape))&&nav.segment(zones[z].center,zones[other].center))link(roads.length+z,roads.length+other);
+  for(let r=0;r<roads.length;r++){const road=roads[r],candidates=[...road.line,...road.line.slice(1).map((p,i)=>projection(zoneAccess(zones[z]),road.line[i],p))];if(candidates.some(p=>inside(p,zones[z].shape)&&nav.segment(zoneAccess(zones[z]),p)))link(roads.length+z,r);}
+  for(let other=0;other<z;other++)if((inside(zones[z].center,zones[other].shape)||inside(zones[other].center,zones[z].shape))&&nav.segment(zoneAccess(zones[z]),zoneAccess(zones[other])))link(roads.length+z,roads.length+other);
  }
  const connected=new Set([roads.length+zones.findIndex(z=>z.id==='centralPlaza')]),queue=[...connected];
  for(const node of queue)for(const next of graph[node])if(!connected.has(next)){connected.add(next);queue.push(next);}
  assert.deepEqual(zones.filter((_,i)=>!connected.has(roads.length+i)).map(z=>z.id),[],'Sectores sin camino hacia Plaza Central');
  assert.deepEqual(roads.filter((_,i)=>!connected.has(i)).map(r=>r.id),[],'Senderos aislados');
- for(const z of zones)check(zoneById.centralPlaza.center,z.center,'plaza → '+z.id);
- check(zoneById.centralPlaza.center,garden.rest,'plaza → Campo de Tulipanes');
- for(const p of [...gatheringPoints,...Object.values(celebrationHumans)])check(zoneById.centralPlaza.center,p,'sorpresa existente');
+ for(const z of zones)check(plazaAccess,zoneAccess(z),'plaza → '+z.id);
+ check(plazaAccess,garden.rest,'plaza → Campo de Tulipanes');
+ for(const p of [...gatheringPoints,...Object.values(celebrationHumans)])check(plazaAccess,p,'sorpresa existente');
  for(const worker of workers){for(const [id,task] of Object.entries(taskRoutes)){check(worker.home,task.point,worker.id+' → '+id);check(task.point,worker.home,id+' → regreso');}for(const p of worker.path)check(worker.home,p,worker.id+' patrulla');}
  for(const b of [...bridges,...ramps])check(b.from,b.to,'cruce '+b.id);
  // Closed water and cliffs, including world limits. Test a bridge's actual crossing of water.

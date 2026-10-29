@@ -13,7 +13,15 @@ import { TerrainLayers } from './world/terrain';
 import { SubmergedCliffLayer } from './world/SubmergedCliffLayer';
 import { RampLayer } from './world/RampLayer';
 import { BridgeLayer } from './world/BridgeLayer';
+import { ZonePlanningOverlay } from './world/ZonePlanningOverlay';
+import { RuralParcelLayer } from './world/RuralParcelLayer';
+import { RuralBuildingsLayer } from './world/RuralBuildingsLayer';
+import { ruralBuildings } from './world/ruralBuildings';
 import { WaterLayer } from './world/water';
+import { CrabLayer } from './world/CrabLayer';
+import { PlazaLayer } from './world/PlazaLayer';
+import { LivestockLayer } from './world/LivestockLayer';
+import { FishLayer } from './world/FishLayer';
 import { VegetationLayer } from './world/vegetation';
 import { ActorGrassOcclusionLayer } from './world/actorGrassOcclusion';
 import { WindSystem } from './world/wind';
@@ -24,18 +32,19 @@ import type { FarmRuntime } from './types';
 // Phase 2 adds nature above the unchanged foundation; existing task actors remain.
 export class ExteriorScene extends WorldScene {
  readonly wind=new WindSystem();
- private bridges!:BridgeLayer;private ramps!:RampLayer;private submerged!:SubmergedCliffLayer;
+ private crabs!:CrabLayer;private plaza!:PlazaLayer;private livestock!:LivestockLayer;private bridges!:BridgeLayer;private ramps!:RampLayer;private submerged!:SubmergedCliffLayer;
  private actorGrass!:ActorGrassOcclusionLayer;
- private tulips!:TulipFieldLayer;private vegetation!:VegetationLayer;private terrain!:TerrainLayers;private water!:WaterLayer;private diagnosticAt=0;private entering=false;private celebration?:CelebrationEvent;
+ private tulips!:TulipFieldLayer;private vegetation!:VegetationLayer;private terrain!:TerrainLayers;private water!:WaterLayer;private fish!:FishLayer;private jefaHouse!:RuralBuildingsLayer;private diagnosticAt=0;private entering=false;private celebration?:CelebrationEvent;
  constructor(runtime:FarmRuntime){super('Exterior',runtime);}
- preload(){for(const style of ['rustic','stone'])this.load.atlas(`bridge-${style}`,`/assets/bridge-${style}-${style==='stone'?'v2':'v1'}.png`,`/assets/bridge-${style}-${style==='stone'?'v2':'v1'}.json`);for(const kind of ['medium','small'])this.load.atlas(`waterfall-${kind}`,`/assets/waterfall-${kind}-v2.png`,`/assets/waterfall-${kind}-v2.json`);this.load.atlas('water-depth-art','/assets/water-depth-v1.png','/assets/water-depth-v1.json');this.load.image('actors','/assets/actors-v2.webp');this.load.atlas('vegetation','/assets/vegetation-atlas.png','/assets/vegetation-atlas.json');this.load.atlas('tulip-garden','/assets/tulip-garden-atlas.png','/assets/tulip-garden-atlas.json');this.load.atlas('tulip-flowers','/assets/tulip-flowers-v2.png','/assets/tulip-flowers-v2.json');}
+ preload(){this.load.image('plaza-fountain','/assets/plaza-fountain-v1.png');for(const style of ['rustic','stone'])this.load.atlas(`bridge-${style}`,`/assets/bridge-${style}-${style==='stone'?'v2':'v1'}.png`,`/assets/bridge-${style}-${style==='stone'?'v2':'v1'}.json`);for(const kind of ['medium','small'])this.load.atlas(`waterfall-${kind}`,`/assets/waterfall-${kind}-v2.png`,`/assets/waterfall-${kind}-v2.json`);this.load.atlas('water-depth-art','/assets/water-depth-v1.png','/assets/water-depth-v1.json');this.load.image('actors','/assets/actors-v2.webp');this.load.atlas('vegetation','/assets/vegetation-atlas.png','/assets/vegetation-atlas.json');this.load.atlas('tulip-garden','/assets/tulip-garden-atlas.png','/assets/tulip-garden-atlas.json');this.load.atlas('tulip-flowers','/assets/tulip-flowers-v2.png','/assets/tulip-flowers-v2.json');for(const b of ruralBuildings)this.load.image(b.texture,`/assets/${b.texture}.png`);}
  create(){
   createFrames(this,true);
   cleanTextureFrames(this,'actors');
   cleanTextureFrames(this,'bridge-stone',['post']);
   cleanTextureFrames(this,'vegetation',this.textures.get('vegetation').getFrameNames().filter(n=>!['LEAVES','PETALS_PINK','PETALS_WHITE','FIREFLY','LILY_PAD','LILY_FLOWER','WATER_GRASS','CATTAILS','REEDS_01','REEDS_02'].includes(n)&&!n.startsWith('GRASS')&&!n.startsWith('WEEDS')));
   cleanTextureFrames(this,'tulip-garden',['BENCH','ARCH','FENCE']);
-  this.terrain=new TerrainLayers(this);this.submerged=new SubmergedCliffLayer(this,this.terrain.masks);this.water=new WaterLayer(this,this.terrain.masks,this.submerged.fade);this.bridges=new BridgeLayer(this,this.terrain.masks);this.ramps=new RampLayer(this,this.terrain.masks);
+  this.terrain=new TerrainLayers(this);this.submerged=new SubmergedCliffLayer(this,this.terrain.masks);this.water=new WaterLayer(this,this.terrain.masks,this.submerged.fade);this.fish=new FishLayer(this,this.terrain.masks);this.bridges=new BridgeLayer(this,this.terrain.masks);this.ramps=new RampLayer(this,this.terrain.masks);
+  new RuralParcelLayer(this,this.terrain.masks);
   this.vegetation=new VegetationLayer(this,this.terrain.masks,this.wind,this.water.habitat);
   this.nav=new NavigationGrid({...navigation,obstacles:[...navigation.obstacles,...this.vegetation.plan.obstacles]},7);
   const garden=createTulipFieldPlan(this.vegetation.plan,this.nav);
@@ -45,19 +54,21 @@ export class ExteriorScene extends WorldScene {
   const camera=this.cameras.main,fit=Math.max(this.scale.width/MAP.width,this.scale.height/MAP.height),dpr=Math.min(window.devicePixelRatio||1,2);
   camera.setBounds(0,0,MAP.width,MAP.height).setZoom(this.scale.width/dpr<760?Math.max(fit,.85*dpr):fit).centerOn(...zoneById.centralPlaza.center);
   this.controls=new CameraControls(this,fit,2.4*dpr,MAP);
-  this.addWorkers();this.actorGrass=new ActorGrassOcclusionLayer(this,this.water.habitat,this.vegetation.displayPlants);
+  this.jefaHouse=new RuralBuildingsLayer(this,(id)=>this.runtime.props.current.onSelect(id),()=>!this.controls.moved);
+  this.crabs=new CrabLayer(this,this.terrain.masks,this.nav);this.plaza=new PlazaLayer(this);this.livestock=new LivestockLayer(this,this.nav);this.addWorkers();this.actorGrass=new ActorGrassOcclusionLayer(this,this.water.habitat,this.vegetation.displayPlants);
   if(CELEBRATION_MODE)this.celebration=new CelebrationEvent(this,MAP,zoneById.centralPlaza.center);
   const enter=(event:Event)=>{if(this.input.enabled)void this.enter((event as CustomEvent<InteriorId>).detail);};
   window.addEventListener('farm-enter',enter);this.events.once('shutdown',()=>window.removeEventListener('farm-enter',enter));
-  for(const z of zones.filter(z=>z.legacyObject)){
+  for(const z of zones.filter(z=>z.legacyObject&&z.legacyObject!=='home')){
    const xs=z.shape.map(p=>p[0]),ys=z.shape.map(p=>p[1]);
    const hit=this.add.zone(...z.center,Math.max(...xs)-Math.min(...xs),Math.max(...ys)-Math.min(...ys)).setDepth(-9);
    hit.setInteractive(new Phaser.Geom.Polygon(z.shape.map(([x,y])=>({x:x-Math.min(...xs),y:y-Math.min(...ys)}))),Phaser.Geom.Polygon.Contains);
    hit.on('pointerup',()=>{if(!this.controls.moved)this.runtime.props.current.onSelect(z.legacyObject!);});
   }
-  this.game.canvas.dataset.mapVersion='phase-3.4-surgical-integration';this.game.canvas.dataset.mapSize=`${MAP.width}x${MAP.height}`;
+  this.game.canvas.dataset.mapVersion='phase-4.1-integrated-rural-parcels';this.game.canvas.dataset.mapSize=`${MAP.width}x${MAP.height}`;
   this.game.canvas.dataset.humanHeight=String(SCALE.humanHeight);
   this.events.once('shutdown',()=>{this.actors=[];});
+  if(import.meta.env.DEV&&new URLSearchParams(window.location.search).get('planning')==='1')new ZonePlanningOverlay(this);
   this.runtime.loading(false);camera.fadeIn(350);
  }
  async enter(id:InteriorId){
@@ -74,10 +85,11 @@ export class ExteriorScene extends WorldScene {
   }catch(error){console.error(error);this.runtime.loading(false);this.entering=false;}
  }
  update(time:number,delta:number){
+  this.jefaHouse?.update(time,delta,this.actors);
   super.update(time,delta);this.celebration?.update(time,delta);if(!this.scene.isVisible())return;
-  this.terrain.cull();this.water.update(time);this.submerged.update(this.cameras.main.worldView);this.bridges.update(time);this.ramps.update(this.cameras.main.worldView);this.vegetation.update(time,delta);this.tulips.update(time);this.actorGrass.update(this.actors);
+  this.crabs.update(time,delta);this.plaza.update(time);this.livestock.update(time,delta);this.terrain.cull();this.water.update(time);this.fish.update(time,delta,this.cameras.main.worldView);this.submerged.update(this.cameras.main.worldView);this.bridges.update(time);this.ramps.update(this.cameras.main.worldView);this.vegetation.update(time,delta);this.tulips.update(time);this.actorGrass.update(this.actors);
   if(time-this.diagnosticAt>750){this.diagnosticAt=time;const c=this.cameras.main;
-   this.game.canvas.dataset.world=JSON.stringify({version:'phase-3.4-surgical-integration',renderer:this.game.renderer.type,vegetation:this.vegetation.diagnostics,tulipField:this.tulips.diagnostics,fps:Math.round(this.game.loop.actualFps),waterFrame:this.water.animationFrame,water:this.water.diagnostics,bridges:this.bridges.diagnostics,ramps:this.ramps.diagnostics,submerged:this.submerged.diagnostics,actorGrass:this.actorGrass.diagnostics,chunks:this.terrain.objects.length,visibleChunks:this.terrain.objects.filter(o=>o.visible).length,zoom:c.zoom,camera:[Math.round(c.worldView.x),Math.round(c.worldView.y),Math.round(c.worldView.width),Math.round(c.worldView.height)],actors:this.actors.map(a=>({id:a.id,x:Math.round(a.x),y:Math.round(a.y),state:a.state,route:a.route.length,walkable:a.nav.canWalk(a.x,a.y)}))});
+   this.game.canvas.dataset.world=JSON.stringify({version:'phase-4.1-integrated-rural-parcels',renderer:this.game.renderer.type,crabs:this.crabs.diagnostics,plaza:this.plaza.diagnostics,livestock:this.livestock.diagnostics,vegetation:this.vegetation.diagnostics,tulipField:this.tulips.diagnostics,fish:this.fish.diagnostics,jefaHouse:this.jefaHouse.diagnostics,gates:this.jefaHouse.gateDiagnostics,fps:Math.round(this.game.loop.actualFps),waterFrame:this.water.animationFrame,water:this.water.diagnostics,bridges:this.bridges.diagnostics,ramps:this.ramps.diagnostics,submerged:this.submerged.diagnostics,actorGrass:this.actorGrass.diagnostics,chunks:this.terrain.objects.length,visibleChunks:this.terrain.objects.filter(o=>o.visible).length,zoom:c.zoom,camera:[Math.round(c.worldView.x),Math.round(c.worldView.y),Math.round(c.worldView.width),Math.round(c.worldView.height)],actors:this.actors.map(a=>({id:a.id,x:Math.round(a.x),y:Math.round(a.y),state:a.state,route:a.route.length,walkable:a.nav.canWalk(a.x,a.y)}))});
   }
  }
 }

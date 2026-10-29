@@ -10,19 +10,21 @@ export function inside(point: Point, polygon: Polygon): boolean {
   }
   return result;
 }
-export interface NavigationData { width: number; height: number; walkable: Polygon[]; obstacles: Polygon[]; bridges?: Polygon[]; water?:Polygon[]; waterIslands?:Polygon[]; passages?:Polygon[]; terrainObstacles?:Polygon[]; swims?:boolean; cell?:number; }
+export interface NavigationGate {id:string;shape:Polygon;open:boolean;}
+export interface NavigationData { gates?:NavigationGate[];canOpenGates?:boolean; width: number; height: number; walkable: Polygon[]; obstacles: Polygon[]; bridges?: Polygon[]; water?:Polygon[]; waterIslands?:Polygon[]; passages?:Polygon[]; terrainObstacles?:Polygon[]; swims?:boolean; cell?:number; }
 export class NavigationGrid {
   readonly cell: number;
   private cols: number;
   private rows: number;
   private cells: Uint8Array;
   private centers:Float64Array;
+  private gateViews=new Map<boolean,NavigationGrid>();
   private edges=new Map<number,boolean>();
   private obstacleBuckets=new Map<string,Polygon[]>();
   private bounds=new Map<Polygon,{minX:number;maxX:number;minY:number;maxY:number}>();
   constructor(readonly data: NavigationData, readonly radius = 3) {
     this.cell=data.cell??8;
-    for(const poly of [...data.walkable,...data.obstacles,...(data.water??[]),...(data.waterIslands??[]),...(data.bridges??[]),...(data.passages??[])]){
+    for(const poly of [...data.walkable,...data.obstacles,...(data.water??[]),...(data.waterIslands??[]),...(data.bridges??[]),...(data.passages??[]),...(data.gates??[]).map(g=>g.shape)]){
       const xs=poly.map(p=>p[0]),ys=poly.map(p=>p[1]);this.bounds.set(poly,{minX:Math.min(...xs),maxX:Math.max(...xs),minY:Math.min(...ys),maxY:Math.max(...ys)});
     }
     for(const poly of data.obstacles){const b=this.bounds.get(poly)!;for(let y=Math.floor(b.minY/128);y<=Math.floor(b.maxY/128);y++)for(let x=Math.floor(b.minX/128);x<=Math.floor(b.maxX/128);x++){const key=`${x},${y}`,list=this.obstacleBuckets.get(key)??[];list.push(poly);this.obstacleBuckets.set(key,list);}}
@@ -32,7 +34,7 @@ export class NavigationGrid {
     this.centers=new Float64Array(this.cells.length*2);
     // Preserve the coarse world grid, but align nodes inside narrow crossing rectangles
     // to their centerline. Every connecting edge still proves continuous footprint clearance.
-    const crossings=[...(data.bridges??[]),...(data.passages??[])].filter(p=>p.length===4&&Math.hypot(p[0][0]-p[3][0],p[0][1]-p[3][1])<this.cell*3);
+    const crossings=[...(data.bridges??[]),...(data.passages??[]),...(data.gates??[]).map(g=>g.shape)].filter(p=>p.length===4&&Math.hypot(p[0][0]-p[3][0],p[0][1]-p[3][1])<this.cell*3);
     for(let i=0;i<this.cells.length;i++){
       let x=(i%this.cols+.5)*this.cell,y=(Math.floor(i/this.cols)+.5)*this.cell;
       for(const p of crossings){if(!inside([x,y],p))continue;
@@ -45,10 +47,18 @@ export class NavigationGrid {
 
     for (let y = 0; y < this.rows; y++) for (let x = 0; x < this.cols; x++) this.cells[y * this.cols + x] = this.canWalk(...this.center(y * this.cols + x)) ? 1 : 0;
   }
+  forGateAccess(canOpenGates:boolean):NavigationGrid {
+    if(!this.data.gates?.length||this.data.canOpenGates===canOpenGates)return this;
+    let view=this.gateViews.get(canOpenGates);if(!view){view=new NavigationGrid({...this.data,canOpenGates},this.radius);this.gateViews.set(canOpenGates,view);}return view;
+  }
+  gatesReady(x:number,y:number):boolean {
+    return !(this.data.gates??[]).some(g=>!g.open&&[[0,0],[this.radius,0],[-this.radius,0],[0,this.radius],[0,-this.radius]].some(([dx,dy])=>inside([x+dx,y+dy],g.shape)));
+  }
   canWalk(x: number, y: number): boolean {
     const r=this.radius;
     for (const [dx, dy] of [[0,0],[r,0],[-r,0],[0,r],[0,-r],[r*.707,r*.707],[-r*.707,r*.707],[r*.707,-r*.707],[-r*.707,-r*.707]]) {
       const point:Point=[x+dx,y+dy];
+      if(!this.data.canOpenGates&&this.data.gates?.some(g=>!g.open&&inside(point,g.shape)))return false;
       if(point[0]<0||point[1]<0||point[0]>=this.data.width||point[1]>=this.data.height)return false;
       const water=this.data.water?.some(poly=>inside(point,poly))&&!this.data.waterIslands?.some(poly=>inside(point,poly));
       const onBridge=this.data.bridges?.some(poly=>inside(point,poly));
@@ -63,7 +73,7 @@ export class NavigationGrid {
     // continuous clearance, including narrow fence corners missed by sampling.
     const dx=b[0]-a[0],dy=b[1]-a[1],cuts=[0,1];
     for(const [ox,oy] of [[0,0],[this.radius,0],[-this.radius,0],[0,this.radius],[0,-this.radius],[this.radius*.707,this.radius*.707],[-this.radius*.707,this.radius*.707],[this.radius*.707,-this.radius*.707],[-this.radius*.707,-this.radius*.707]]){
-     for(const polygon of [...this.data.walkable,...this.data.obstacles,...(this.data.water??[]),...(this.data.waterIslands??[]),...(this.data.bridges??[]),...(this.data.passages??[])]){
+     for(const polygon of [...this.data.walkable,...this.data.obstacles,...(this.data.water??[]),...(this.data.waterIslands??[]),...(this.data.bridges??[]),...(this.data.passages??[]),...(this.data.gates??[]).map(g=>g.shape)]){
       const bounds=this.bounds.get(polygon)!;
       if(bounds.maxX<Math.min(a[0],b[0])+ox||bounds.minX>Math.max(a[0],b[0])+ox||bounds.maxY<Math.min(a[1],b[1])+oy||bounds.minY>Math.max(a[1],b[1])+oy)continue;
       for(let i=0;i<polygon.length;i++){

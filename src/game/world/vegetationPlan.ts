@@ -1,7 +1,10 @@
+import seedRoads from './vegetationSeedRoads';
+import { naturalHeight } from './naturalScale';
+import { buildingConflicts, ruralBuildings } from './ruralBuildings';
 import { inside, rectangle, type Point, type Polygon } from '../navigation';
 import { MAP, mainland, islands, rawWater, cliffFaces, roads, bridges, ramps, rivers } from './mapConfig';
 import { zones, zoneById } from './zones';
-import { gatheringPoints, celebrationHumans } from '../../data/celebration';
+import { vegetationGatheringSeeds as gatheringPoints, vegetationHumanSeeds as celebrationHumans } from '../../data/celebration';
 export const VEGETATION_NAMES = [
  'TREE_GREEN_01','TREE_GREEN_02','TREE_GREEN_03','FRUIT_TREE_01','FRUIT_TREE_02','PINE_01','PINE_02','TREE_BLOSSOM_PINK',
  'TREE_BLOSSOM_WHITE','TREE_BLOSSOM_PURPLE','TREE_AUTUMN','TREE_LARGE','BAMBOO_CLUSTER_01','BAMBOO_CLUSTER_02','BAMBOO_SMALL','PALM',
@@ -20,7 +23,7 @@ const clearPoints=[...gatheringPoints,...Object.values(celebrationHumans),...zon
 export function waterAt(x:number,y:number){return rawWater.some(p=>inside([x,y],p))&&!islands.some(i=>inside([x,y],i.shape));}
 export function dryAt(x:number,y:number){return x>12&&y>12&&x<MAP.width-12&&y<MAP.height-12&&(inside([x,y],mainland)||islands.some(i=>inside([x,y],i.shape)))&&!waterAt(x,y)&&!cliffFaces.some(p=>inside([x,y],p));}
 function segmentDistance(p:Point,a:Point,b:Point){const dx=b[0]-a[0],dy=b[1]-a[1],t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/(dx*dx+dy*dy||1)));return Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy);}
-export function roadDistance(x:number,y:number){let distance=Infinity;for(const r of roads)for(let i=1;i<r.line.length;i++)distance=Math.min(distance,segmentDistance([x,y],r.line[i-1],r.line[i])-r.width/2);return distance;}
+export function roadDistance(x:number,y:number){let distance=Infinity;for(const r of seedRoads)for(let i=1;i<r.line.length;i++)distance=Math.min(distance,segmentDistance([x,y],r.line[i-1] as [number,number],r.line[i] as [number,number])-r.width/2);return distance;}
 function protectedAt(x:number,y:number,margin:number){
  if(reserves.some(z=>inside([x,y],z.shape)))return true;
  if(clearPoints.some(p=>Math.hypot(x-p[0],y-p[1])<margin+30))return true;
@@ -75,7 +78,8 @@ export function createVegetationPlan():VegetationPlan {
  for(const [cx,cy,rx,ry,biome,names] of groves){const count=biome==='north'?42:biome==='panda'?55:biome==='coast'?14:24;
   for(let i=0;i<count;i++){const angle=random()*Math.PI*2,r=Math.sqrt(random());add(names[Math.floor(random()*names.length)],(cx+Math.cos(angle)*rx*r)*2,(cy+Math.sin(angle)*ry*r)*2,biome);}
  }
- const landmarks:Array<[VegetationName,number,number]>=[['OLD_TREE',830,38],['HOLLOW_TREE',1070,200],['SWING_TREE',750,590],['LANTERN_TREE',330,180],['CHERRY_TREE',440,375],['TREE_BLOSSOM_PINK',920,554],['TREE_BLOSSOM_WHITE',325,355],['TREE_BLOSSOM_PURPLE',1240,570],['TREE_AUTUMN',1070,725],['TREE_LARGE',1310,165]];
+ // The pink tree sits east of the jefa-house roof so its canopy clears the facade.
+ const landmarks:Array<[VegetationName,number,number]>=[['OLD_TREE',830,38],['HOLLOW_TREE',1070,200],['SWING_TREE',750,590],['LANTERN_TREE',330,180],['CHERRY_TREE',440,375],['TREE_BLOSSOM_PINK',960,500],['TREE_BLOSSOM_WHITE',325,355],['TREE_BLOSSOM_PURPLE',1240,570],['TREE_AUTUMN',1070,725],['TREE_LARGE',1310,165]];
  for(const [name,x,y] of landmarks){
   const before=plants.length;add(name,x*2,y*2,'landmark');
   for(let radius=24;plants.length===before&&radius<=220;radius+=24)for(let i=0;i<16&&plants.length===before;i++){
@@ -100,5 +104,24 @@ export function createVegetationPlan():VegetationPlan {
  // Keep the lake approach readable: relocate the deterministic moss rock that visually sits on the path after duck-east-bridge.
  const pathRockIndex=plants.findIndex(p=>p.name==='ROCK_MOSS'&&p.x===425&&p.y===1471);
  if(pathRockIndex>=0){const p=plants[pathRockIndex],obstacleIndex=plants.slice(0,pathRockIndex).filter(v=>v.solid).length;p.x=345;p.y=1450;obstacles[obstacleIndex]=footprint(p);}
- return {plants,obstacles};
+ for(const p of plants){
+  const margin=p.solid?Math.min(16,p.width*.2):3;
+  const newPathConflict=(x:number,y:number)=>(p.solid||p.name.includes('TREE'))&&roads.some(r=>r.line.slice(1).some((b,i)=>segmentDistance([x,y],r.line[i],b)<r.width/2+margin+8));
+  const canopyConflict=(x:number,y:number)=>{
+   if(!((p.name.includes('TREE')&&p.name!=='TREE_STUMP')||p.name.startsWith('PINE')||p.name==='PALM'))return false;
+   const h=naturalHeight({...p,x,y}),spread=p.solid?.5:.58,rise=p.solid?.92:1.02;return ruralBuildings.filter(b=>['rabbit-hutch','fishing-hut'].includes(b.id)).some(b=>{
+    const sh=b.displayWidth*(b.id==='rabbit-hutch'?.44:1.125),half=b.displayWidth*.50;
+    return x+h*spread>b.anchor[0]-half-8&&x-h*spread<b.anchor[0]+half+8&&y+3>b.anchor[1]-sh&&y-h*rise<b.anchor[1]+10;
+   });
+  };
+  if(!buildingConflicts(p.x,p.y,margin)&&!newPathConflict(p.x,p.y)&&!canopyConflict(p.x,p.y))continue;
+  const ox=p.x,oy=p.y;let moved=false;
+  for(let radius=24;radius<=300&&!moved;radius+=12)for(let i=0;i<24&&!moved;i++){
+   const a=i*Math.PI/12,x=Math.round(ox+Math.cos(a)*radius),y=Math.round(oy+Math.sin(a)*radius);
+   if(canopyConflict(x,y)||newPathConflict(x,y)||!dryAt(x,y)||protectedAt(x,y,p.solid?Math.max(20,p.width*.28):8)||buildingConflicts(x,y,margin+8))continue;
+   if(plants.some(q=>q!==p&&q.solid&&Math.hypot(q.x-x,q.y-y)<25))continue;
+   p.x=x;p.y=y;moved=true;
+  }
+ }
+ return {plants,obstacles:plants.filter(p=>p.solid).map(footprint)};
 }

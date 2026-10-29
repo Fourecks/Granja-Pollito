@@ -7,7 +7,7 @@ import { cliffFaces } from './mapConfig';
 import { bridgeGeometry, bridgeSocket, type BridgeGeometry } from './bridgeGeometry';
 interface PixelSource {pixels:Uint8ClampedArray;width:number;height:number;}
 export class BridgeLayer {
- private objects:Phaser.GameObjects.Image[]=[];private integration:ObjectIntegrationLayer;private cullAt=0;private floorCount=0;private railCount=0;private postCount=0;
+ private objects:Phaser.GameObjects.Image[]=[];private integration:ObjectIntegrationLayer;private cullAt=0;private floorCount=0;private railCount=0;private postCount=0;private pileCount=0;
  private wood=new Map<string,PixelSource>();
  constructor(private scene:Phaser.Scene,masks:WorldMasks){
   const anchors:IntegrationAnchor[]=[];
@@ -15,15 +15,15 @@ export class BridgeLayer {
    const sheet=scene.textures.get(bridgeAtlas(p)),frame=sheet.get('planks'),c=document.createElement('canvas');c.width=frame.cutWidth;c.height=frame.cutHeight;const ctx=c.getContext('2d')!;
    ctx.drawImage(sheet.getSourceImage() as HTMLImageElement,frame.cutX,frame.cutY,frame.cutWidth,frame.cutHeight,0,0,c.width,c.height);
    this.wood.set(p.crossing.id,{pixels:ctx.getImageData(0,0,c.width,c.height).data,width:c.width,height:c.height});
-   const geometry=bridgeGeometry(p,masks);this.floor(p,geometry);this.bankContact(p,geometry,masks);
+   const geometry=bridgeGeometry(p,masks);this.floor(p,geometry);if(p.crossing.kind==='pier')this.piles(p,geometry,masks);this.bankContact(p,geometry,masks);
    if(p.style==='footwalk')continue;
    for(const side of [-1,1]){
     const first=bridgeSocket(p,geometry,0,side),last=bridgeSocket(p,geometry,1,side);
     const steps=Math.ceil(Math.hypot(last.foot.x-first.foot.x,last.foot.y-first.foot.y)/16);
-    for(let k=0;k<steps;k++)this.rail(p,geometry,side,k/steps,(k+1)/steps);
+    for(let k=0;k<steps;k++)p.crossing.kind==='pier'?this.pierRail(p,geometry,side,k/steps,(k+1)/steps):this.rail(p,geometry,side,k/steps,(k+1)/steps);
     for(const socket of [first,last]){
      const pos=socket.foot;
-     if(p.style==='rustic'||p.style==='rope')this.post(p,socket);
+     if((p.style==='rustic'||p.style==='rope')&&p.crossing.kind!=='pier')this.post(p,socket);
      anchors.push({id:`${p.crossing.id}-${side}-${pos.x}`,x:pos.x,y:pos.y+2,depth:pos.y+.2,span:12,cover:4,kind:'plant'});
     }
    }
@@ -43,19 +43,51 @@ export class BridgeLayer {
  }
  private image(key:string,c:HTMLCanvasElement,x:number,y:number,depth:number,part:string){if(this.scene.textures.exists(key))this.scene.textures.remove(key);this.scene.textures.addCanvas(key,c);const image=this.scene.add.image(x,y,key).setOrigin(0).setScale(1).setDepth(depth).setData('bridgePart',part);this.objects.push(image);return image;}
  private floor(p:BridgePlan,geometry:BridgeGeometry){
-  const xs=p.crossing.shape.map(v=>v[0]),ys=p.crossing.shape.map(v=>v[1]),left=Math.floor(Math.min(...xs))-3,top=Math.floor(Math.min(...ys))-3,w=Math.ceil(Math.max(...xs))-left+4,h=Math.ceil(Math.max(...ys))-top+8;
+  const xs=p.crossing.shape.map(v=>v[0]),ys=p.crossing.shape.map(v=>v[1]),left=Math.floor(Math.min(...xs))-3,top=Math.floor(Math.min(...ys))-3,w=Math.ceil(Math.max(...xs))-left+4,h=Math.ceil(Math.max(...ys))-top+8+(p.crossing.kind==='pier'?60:0);
   const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d')!,data=ctx.createImageData(w,h);
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-   const wx=left+x,wy=top+y;if(cliffFaces.some(face=>inside([wx,wy],face)))continue;
+   const wx=left+x,wy=top+y;if(p.crossing.kind!=='pier'&&cliffFaces.some(face=>inside([wx,wy],face)))continue;
    const vx=wx-p.crossing.from[0],vy=wy-p.crossing.from[1],a=vx*p.ux+vy*p.uy;
    const isFloor=a>=geometry.start&&a<=geometry.end&&inside([wx,wy],p.crossing.shape),shadow=a>=geometry.start&&a<=geometry.end&&inside([wx-2,wy-5],p.crossing.shape);if(!isFloor&&!shadow)continue;
-   const j=(y*w+x)*4;if(!isFloor){data.data.set([32,43,37,72],j);continue;}
+   const j=(y*w+x)*4;if(!isFloor){if(shadow)data.data.set([32,43,37,72],j);continue;}
    const dx=wx-p.crossing.from[0],dy=wy-p.crossing.from[1],along=dx*p.ux+dy*p.uy,across=dx*p.nx+dy*p.ny;
    const stone=p.style==='stone'||p.style==='arched',seam=!stone&&((along+12)%9+9)%9<1,edge=Math.abs(across)>p.width/2-2;
    const rgb=this.pixel(p,across+80,along+100,seam?-46:edge?-22:0);data.data.set([...rgb,255],j);
    if(!stone&&Math.floor((along+12)/9)%4===0&&Math.abs(Math.abs(across)-(p.width/2-4))<.7&&((along+11)%9+9)%9<1.7)data.data.set([71,61,44,255],j);
   }
   ctx.putImageData(data,0,0);this.image(`bridge-floor-${p.crossing.id}`,c,left,top,-10,'floor');this.floorCount++;
+ }
+ private piles(p:BridgePlan,g:BridgeGeometry,masks:WorldMasks){
+  const wall=masks.cliffWalls??masks.cliffs;
+  const w=Math.ceil(p.crossing.shape.reduce((v,q)=>Math.max(v,q[0]),0)-Math.min(...p.crossing.shape.map(q=>q[0])))+8;
+  const h=Math.ceil(p.crossing.shape.reduce((v,q)=>Math.max(v,q[1]),0)-Math.min(...p.crossing.shape.map(q=>q[1])))+100;
+  const left=Math.floor(Math.min(...p.crossing.shape.map(q=>q[0])))-4,top=Math.floor(Math.min(...p.crossing.shape.map(q=>q[1])))-4;
+  const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d')!,image=ctx.createImageData(w,h);
+  const waterAt=(x:number,y:number)=>{const gx=Math.floor(x/2),gy=Math.floor(y/2);if(gx<0||gy<0||gx>=1536||gy>=1024)return false;return masks.water[(gy*1536+gx)*4+3]>127;};
+  const wallAt=(x:number,y:number)=>{const gx=Math.floor(x/2),gy=Math.floor(y/2);if(gx<0||gy<0||gx>=1536||gy>=1024)return false;return wall[(gy*1536+gx)*4+3]>127;};
+  const put=(x:number,y:number,color:number[],alpha:number)=>{const ix=Math.round(x-left),iy=Math.round(y-top);if(ix<0||iy<0||ix>=w||iy>=h)return;const i=(iy*w+ix)*4;image.data[i]=color[0];image.data[i+1]=color[1];image.data[i+2]=color[2];image.data[i+3]=alpha;};
+  let supports=0;
+  // Paired, narrow timber piles sit below the deck. The cliff layer covers their
+  // upper portions; only the sections that emerge into the water remain visible.
+  for(let along=Math.max(g.start+16,8);along<g.end-8;along+=34){
+   const points=[-.32,.32].map(side=>bridgePoint(p,along,side*p.width));
+   for(const q of points){
+    let reachesWater=false;for(let dy=4;dy<=84;dy+=2)if(waterAt(q.x,q.y+dy)){reachesWater=true;break;}
+    if(!reachesWater)continue;supports++;
+    for(let dy=2;dy<=78;dy+=1){
+     const y=q.y+dy,submerged=waterAt(q.x,y),inCliff=wallAt(q.x,y);if(!submerged&&!inCliff)continue;
+     const lengthFade=dy>62?Math.max(.18,1-(dy-62)/18):1;
+     for(let dx=-2;dx<=2;dx++){
+      const edge=Math.abs(dx)===2,color=edge?[57,43,29]:dx===-1?[169,115,62]:[119,75,40];
+      const wetColor=edge?[40,69,72]:dx===-1?[102,144,143]:[61,99,100];
+      put(q.x+dx,y,submerged?wetColor:color,Math.round((submerged?115:255)*lengthFade));
+     }
+    }
+    // A small collar where each pile meets the underside of the deck.
+    for(let dx=-3;dx<=3;dx++)put(q.x+dx,q.y+3,Math.abs(dx)===3?[61,45,30]:[147,95,48],220);
+   }
+  }
+  ctx.putImageData(image,0,0);this.image('bridge-piles-fishing-pier',c,left,top,-16.5,'pile');this.pileCount=supports;
  }
  private bankContact(p:BridgePlan,g:BridgeGeometry,masks:WorldMasks){
   if(p.crossing.kind==='pier')return;
@@ -93,6 +125,28 @@ export class BridgeLayer {
   this.image(`bridge-rail-${p.crossing.id}-${side}-${t0}`,c,left,top,footY+.05,'rail');this.railCount++;
  }
 
+ /** A fishing pier uses a connected timber handrail with regularly spaced uprights. */
+ private pierRail(p:BridgePlan,g:BridgeGeometry,side:number,t0:number,t1:number){
+  const start=bridgeSocket(p,g,0,side).foot,end=bridgeSocket(p,g,1,side).foot,lift=Math.max(12,g.lift),dx=end.x-start.x,dy=end.y-start.y;
+  const at=(t:number,height=0)=>({x:start.x+dx*t,y:start.y+dy*t-height});
+  const a=at(t0),b=at(t1),left=Math.floor(Math.min(a.x,b.x))-7,top=Math.floor(Math.min(a.y,b.y))-lift-7,w=Math.abs(b.x-a.x)+15,h=Math.abs(b.y-a.y)+lift+15;
+  const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d')!;ctx.imageSmoothingEnabled=false;
+  const beam=(height:number,width:number,outer:string,inner:string,shine:string)=>{
+   const p0=at(t0,height),p1=at(t1,height);ctx.beginPath();ctx.moveTo(p0.x-left,p0.y-top);ctx.lineTo(p1.x-left,p1.y-top);ctx.lineCap='square';ctx.lineJoin='miter';ctx.strokeStyle=outer;ctx.lineWidth=width+2;ctx.stroke();ctx.strokeStyle=inner;ctx.lineWidth=width;ctx.stroke();ctx.beginPath();ctx.moveTo(p0.x-left,p0.y-top-1);ctx.lineTo(p1.x-left,p1.y-top-1);ctx.strokeStyle=shine;ctx.lineWidth=1;ctx.stroke();
+  };
+  // Two solid rails follow the bridge edge; squared posts tie them back to the deck.
+  beam(lift,4,'#4e321d','#a8622b','#e3a353');beam(lift*.48,2,'#51341e','#8d5328','#ce8740');
+  const along=t0*Math.hypot(dx,dy),postSpacing=30;
+  if(Math.abs(along/postSpacing-Math.round(along/postSpacing))*postSpacing<8){
+   const q=at(t0,lift),x=q.x-left,y=q.y-top;
+   ctx.fillStyle='#49301c';ctx.fillRect(Math.round(x)-3,Math.round(y),6,Math.max(4,Math.round(lift)));
+   ctx.fillStyle='#a45e2b';ctx.fillRect(Math.round(x)-1,Math.round(y)+1,3,Math.max(2,Math.round(lift)-2));
+   ctx.fillStyle='#e0a04d';ctx.fillRect(Math.round(x)-1,Math.round(y)+1,1,Math.max(2,Math.round(lift)-3));
+  }
+  if(t1>=.999){const q=at(t1,lift),x=q.x-left,y=q.y-top;ctx.fillStyle='#49301c';ctx.fillRect(Math.round(x)-3,Math.round(y),6,Math.max(4,Math.round(lift)));ctx.fillStyle='#a45e2b';ctx.fillRect(Math.round(x)-1,Math.round(y)+1,3,Math.max(2,Math.round(lift)-2));}
+  const footY=start.y+dy*(t0+t1)/2;this.image(`pier-rail-${side}-${t0}`,c,left,top,footY+.08,'rail');this.railCount++;
+ }
+
  update(time:number){const view=this.scene.cameras.main.worldView;if(time>=this.cullAt){this.cullAt=time+160;for(const o of this.objects)o.setVisible(Phaser.Geom.Rectangle.Overlaps(view,o.getBounds()));}this.integration.update(time,view);}
- get diagnostics(){return {styles:Object.fromEntries(['rustic','rope','stone','arched','footwalk'].map(style=>[style,bridgePlans.filter(p=>p.style===style).length])),floors:this.floorCount,rails:this.railCount,posts:this.postCount,objects:this.objects.length,visible:this.objects.filter(i=>i.visible).length,integration:this.integration.diagnostics,rotatedSprites:0};}
+ get diagnostics(){return {styles:Object.fromEntries(['rustic','rope','stone','arched','footwalk'].map(style=>[style,bridgePlans.filter(p=>p.style===style).length])),floors:this.floorCount,rails:this.railCount,posts:this.postCount,pilePosts:this.pileCount,objects:this.objects.length,visible:this.objects.filter(i=>i.visible).length,integration:this.integration.diagnostics,rotatedSprites:0};}
 }

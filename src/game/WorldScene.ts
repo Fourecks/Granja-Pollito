@@ -16,6 +16,7 @@ export abstract class WorldScene extends Phaser.Scene {
  protected jobs=new Map<string,Job>(); protected interior=false;
  constructor(key:string,protected runtime:FarmRuntime){super(key);}
  protected actor(id:string,kind:Actor['kind'],point:Point,patrol:Point[],nav:NavigationGrid,row=0,sleeping=false):Actor {
+  nav=nav.forGateAccess(kind==='worker');
   const initial=nav.nearest(point),factor=this.interior?2:1;
   const shadow=this.add.ellipse(initial[0],initial[1],(kind==='cow'?49:kind==='worker'?17:13)*factor,(kind==='cow'?13:5)*factor,0x543b26,.28).setDepth(initial[1]-.1);
   const sprite=this.add.sprite(...initial,kind==='cow'?'cows':kind==='dog'?'dogs':'actors',kind==='worker'||kind==='dog'?row*4:0)
@@ -61,6 +62,7 @@ export abstract class WorldScene extends Phaser.Scene {
     const target=actor.route[0],dx=target[0]-actor.x,dy=target[1]-actor.y,distance=Math.hypot(dx,dy);
     const speed=(actor.kind==='worker'?95:actor.kind==='cow'?10:actor.kind==='dog'?actor.state==='RUN'?80:55:actor.eventTarget?45:24)*(this.interior?1.5:1),move=Math.min(distance,speed*delta/1000);
     const x=actor.x+dx/Math.max(distance,.001)*move,y=actor.y+dy/Math.max(distance,.001)*move;
+    if(!actor.nav.gatesReady(x,y))continue;
     if(!actor.nav.canWalk(x,y)){actor.route=[];if(job){this.jobs.delete(actor.id);this.runtime.busyWorkers.delete(actor.id);this.runtime.completed.add(job.task);this.runtime.props.current.onTaskError(job.task,'La ruta se detuvo antes de un obstáculo.');}continue;}
     actor.x=x;actor.y=y;actor.sprite.setFlipX(actor.kind==='cow'||actor.kind==='dog'?dx>0:dx<0);
     actor.sprite.setFrame(actor.kind==='cow'?0:actor.kind==='worker'||actor.kind==='dog'?actor.row*4+1+Math.floor(time/(actor.state==='RUN'?95:160))%2:1+Math.floor(time/(actor.state==='RUN'?95:160))%2);
