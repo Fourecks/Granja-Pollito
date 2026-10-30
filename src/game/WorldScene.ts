@@ -11,7 +11,7 @@ export interface Actor {
  id:string; kind:'chick'|'worker'|'cow'|'dog'; row:number; x:number; y:number; home:Point; patrol:Point[]; route:Point[]; step:number;
  sprite:Phaser.GameObjects.Sprite; shadow:Phaser.GameObjects.Ellipse; nav:NavigationGrid; nextPatrol:number; sleeping?:boolean; state:'IDLE'|'WALK'|'WORK'|'OBSERVE'|'CELEBRATE'|'RUN'|'SIT'|'SLEEP'|'FOLLOW'|'DANCE'|'LOOK_UP'; eventTarget?:Point; accessory?:Phaser.GameObjects.Graphics; variant?:number; workerChick?:boolean;
 }
-interface Job {task:TaskId;worker:Actor;phase:'planning'|'walk'|'action';until:number;effect:Phaser.GameObjects.Container|null;}
+export interface Job {task:TaskId;worker:Actor;phase:'planning'|'walk'|'action';until:number;effect:Phaser.GameObjects.Container|null;}
 export abstract class WorldScene extends Phaser.Scene {
  actors:Actor[]=[]; controls!:CameraControls; nav!:NavigationGrid;
  readonly routeQueue=new RouteQueue();
@@ -65,7 +65,7 @@ export abstract class WorldScene extends Phaser.Scene {
    if(this.routeQueue.has(actor.id))continue;
    if(job?.phase==='action'){actor.state='WORK';
     actor.sprite.setFlipX(job.task==='collect-milk').setFrame(actor.row*4+3).setY(actor.y+Math.sin(time/180)*.6);
-    if(time>=job.until){job.effect?.destroy();this.jobs.delete(actor.id);this.runtime.busyWorkers.delete(actor.id);this.runtime.completed.add(job.task);this.runtime.props.current.onTaskComplete(job.task);this.requestRoute(actor,actor.home);actor.nextPatrol=time+6500;}
+    if(time>=job.until){job.effect?.destroy();this.onCareComplete(job.task);this.jobs.delete(actor.id);this.runtime.busyWorkers.delete(actor.id);this.runtime.completed.add(job.task);this.runtime.props.current.onTaskComplete(job.task);this.requestRoute(actor,actor.home);actor.nextPatrol=time+6500;}
     continue;
    }
    if(actor.route.length){if(!['RUN','FOLLOW'].includes(actor.state))actor.state='WALK';
@@ -80,7 +80,7 @@ export abstract class WorldScene extends Phaser.Scene {
     actor.shadow.setPosition(x,y).setDepth(y-.1);
     if(distance<=move+.2)actor.route.shift();
    }else if(job){
-    actor.state='WORK';job.phase='action';job.until=time+taskRoutes[job.task].duration;job.effect=this.taskEffect(job);
+    actor.state='WORK';job.phase='action';job.until=time+taskRoutes[job.task].duration;job.effect=this.taskEffect(job);this.onCareStart(job.task);
    }else{
     if(actor.eventTarget){actor.state=actor.kind==='worker'?'CELEBRATE':actor.kind==='chick'?actor.variant===6?'LOOK_UP':'DANCE':'SIT';}else if(actor.kind==='chick')actor.state=actor.variant===5?'DANCE':actor.variant===6?'LOOK_UP':'IDLE';
     if(actor.kind==='worker'&&!actor.eventTarget)actor.state=actor.step%3===0?'WORK':actor.step%3===1?'OBSERVE':'IDLE';
@@ -96,6 +96,8 @@ export abstract class WorldScene extends Phaser.Scene {
    actor.sprite.setVisible(this.cameras.main.worldView.contains(actor.x,actor.y)||!this.scene.isVisible());
   }
  }
+ protected onCareStart(_task:TaskId){}
+ protected onCareComplete(_task:TaskId){}
  protected taskEffect(job:Job):Phaser.GameObjects.Container {
   const a=job.worker,container=this.add.container(a.x+(job.task==='collect-milk'?-16:15),a.y).setDepth(a.y+1),g=this.add.graphics();container.add(g);
   if(job.task==='collect-milk'){
@@ -109,8 +111,12 @@ export abstract class WorldScene extends Phaser.Scene {
   }else if(job.task==='collect-eggs'){
    g.fillStyle(0xb68041).fillRect(-8,-7,19,12);g.fillStyle(0xffedbb);for(let i=0;i<3;i++)g.fillRect(-5+i*5,-11,4,6);
   }else{
-   g.fillStyle(job.task==='feed-cows'?0xdaba6c:0x9cddec,.8);for(let i=0;i<8;i++)g.fillRect((i*7)%25-12,(i*13)%12-12,2,3);
-   this.tweens.add({targets:container,alpha:.35,duration:330,yoyo:true,repeat:-1});
+   const taskName=job.task;
+   const feeding=taskName.startsWith('feed-'),water=taskName.includes('wash')||taskName.includes('bath')||taskName==='mud-bath-pigs',clean=taskName.startsWith('clean-');
+   g.fillStyle(feeding?0xdaba6c:water?0x9cddec:clean?0xc6b58d:0xffe5a3,.88);
+   for(let i=0;i<10;i++)g.fillRect((i*7)%29-14,(i*13)%16-14,2+(i%3===0?1:0),water?4:3);
+   if(taskName.startsWith('brush-')||taskName.startsWith('groom-')){g.fillStyle(0xffe5a3);for(let i=0;i<4;i++)g.fillRect(-10+i*7,-19-(i%2)*4,3,3);}
+   this.tweens.add({targets:container,alpha:.45,duration:300,yoyo:true,repeat:-1});
   }
   return container;
  }

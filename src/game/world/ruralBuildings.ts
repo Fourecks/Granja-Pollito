@@ -4,7 +4,7 @@ export const ruralBuildings=zonePlanning.filter(p=>p.kind==='building').map(p=>{
  const house=p.id==='jefa-house',center=p.center,footprint=p.footprint!;
  const door:Point=[center[0],center[1]+footprint.depth/2];
  const texture=house?'jefa-house-v3':['goat-shelter','rabbit-hutch','cow-barn'].includes(p.id)?`${p.id}-v1`:`${p.id}-v2`;
- return {...p,center,footprint,door,texture,displayWidth:house?248:p.id==='horse-stable'?234:p.id==='greenhouse'?216:p.id==='chicken-coop'?202:p.id==='resource-yard'?184:p.id==='pig-shelter'?190:p.id==='cow-barn'?248:p.id==='goat-shelter'?146:p.id==='rabbit-hutch'?154:108,anchor:[door[0],door[1]+6] as Point,connection:roadConnection({...p,door}),interiorId:house?'home':p.id==='cow-barn'?'barn':p.id==='chicken-coop'?'coop':p.id==='greenhouse'?'shed':undefined};
+ return {...p,center,footprint,door,texture,displayWidth:house?248:p.id==='horse-stable'?234:p.id==='greenhouse'?216:p.id==='chicken-coop'?202:p.id==='resource-yard'?184:p.id==='pig-shelter'?190:p.id==='cow-barn'?248:p.id==='goat-shelter'?146:p.id==='rabbit-hutch'?154:108,anchor:[door[0],door[1]+6] as Point,connection:roadConnection({...p,door}),interiorId:house?'home':p.id==='cow-barn'?'barn':p.id==='chicken-coop'?'coop':p.id==='greenhouse'?'shed':p.id==='horse-stable'?'horse-stable':p.id==='pig-shelter'?'pig-shelter':p.id==='goat-shelter'?'goat-shelter':undefined};
 });
 export const ruralBuildingObstacles=ruralBuildings.flatMap(p=>{
  const [x,y]=p.center,{width:w,depth:d}=p.footprint;

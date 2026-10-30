@@ -3,7 +3,7 @@ import type { NavigationGrid } from '../navigation';
 import { LivestockSimulation, livestockHabitats, type Species } from './livestock';
 
 /** Eight grounded poses per coat, drawn once at native pixel resolution. */
-function animalTexture(scene:Phaser.Scene,species:Species,variant:number,frame:number){
+export function animalTexture(scene:Phaser.Scene,species:Species,variant:number,frame:number){
  const key=`livestock-${species}-${variant}-${frame}`;if(scene.textures.exists(key))return key;
  const c=document.createElement('canvas');c.width=64;c.height=48;const g=c.getContext('2d')!;
  const r=(color:string,x:number,y:number,w:number,h:number)=>{g.fillStyle=color;g.fillRect(Math.round(x),Math.round(y),w,h);};

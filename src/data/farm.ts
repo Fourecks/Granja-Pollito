@@ -30,8 +30,11 @@ export const characters:CharacterData[]=roster.map(c=>{const p=point(...homes[c.
 export interface InteractiveObject { id: string; type: 'sign' | 'building' | 'plot' | 'decoration'; title: string; message: string; taskIds?: TaskId[]; }
 export const objects: InteractiveObject[] = [
   { id: 'home', type: 'building', title: 'Casa de La Jefa', message: 'Parcela reservada para la Casa de La Jefa.' },
-  { id: 'coop', type: 'building', title: 'Gallinero', message: 'Parcela del gallinero. Las tareas existentes siguen disponibles.', taskIds: ['feed-chickens', 'collect-eggs', 'clean-coop'] },
-  { id: 'barn', type: 'building', title: 'Establo', message: 'Pradera reservada para el establo de vacas.', taskIds: ['feed-cows', 'collect-milk'] },
+  { id: 'coop', type: 'building', title: 'Gallinero', message: 'El gallinero tiene nidos, semillas y un baño de polvo para los pollitos.', taskIds: ['feed-chickens', 'collect-eggs', 'clean-coop', 'prepare-dust-bath'] },
+  { id: 'barn', type: 'building', title: 'Establo de las vacas', message: 'El establo mantiene a las vacas con heno, agua y ordeño.', taskIds: ['feed-cows', 'collect-milk'] },
+  { id: 'horse-stable', type: 'building', title: 'Establo de caballos', message: 'Un establo amplio con boxes, cepillos y zona de baño para los caballos.', taskIds: ['feed-horses', 'brush-horses', 'wash-horses', 'clean-stable'] },
+  { id: 'pig-shelter', type: 'building', title: 'Casa de los cerdos', message: 'Corral con comedero y baño de lodo para los cerdos.', taskIds: ['feed-pigs', 'mud-bath-pigs', 'clean-pig-pen'] },
+  { id: 'goat-shelter', type: 'building', title: 'Casa de las cabras', message: 'Un rincón con heno, agua y espacio para asear a las cabras.', taskIds: ['feed-goats', 'groom-goats', 'clean-goat-shelter'] },
   { id: 'garden', type: 'plot', title: 'Huerto', message: 'Suelo agrícola preparado para la próxima fase.', taskIds: ['water-crops'] },
   { id: 'sign', type: 'sign', title: 'Granja Pollito', message: 'Propietaria: La Jefa. Productividad cuestionable, compañía excelente.' },
   { id: 'well', type: 'decoration', title: 'Pozo de agua', message: 'Agua fresca para la granja, y una pausa breve para mirar el jardín.' },

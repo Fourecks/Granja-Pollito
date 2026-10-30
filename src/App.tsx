@@ -44,7 +44,8 @@ export default function App() {
   }, [ready, entered]);
 
   const runTask = useCallback((id: TaskId) => {
-    if (workingIds.includes(id) || state.tasks[id].status === 'done') return;
+    if (workingIds.includes(id)) return;
+    if (state.tasks[id].status === 'done') { setNotice(`${taskCopy[id].title}: ya quedó listo.`); return; }
     setWorkingIds(current => [...current, id]);
     const worker = workers.find(w => w.id === state.tasks[id].assignedTo) ?? workers.find(w => w.id === taskRoutes[id].worker)!;
     setNotice(`${worker.name} va en camino: ${taskCopy[id].title.toLowerCase()}.`);
@@ -79,7 +80,7 @@ export default function App() {
     </header>
     <section className="farm-wrap" aria-label="Granja Pollito interactiva">
 
-      <Suspense fallback={<div className="world-loading"><span>🐥</span><small>Preparando Granja Pollito…</small></div>}><Scene selected={selected} onSelect={choose} characters={characters} state={state} activeTasks={workingIds} onTaskComplete={completeTask} onTaskError={taskError} onLocation={setLocation}/></Suspense>
+      <Suspense fallback={<div className="world-loading"><span>🐥</span><small>Preparando Granja Pollito…</small></div>}><Scene selected={selected} onSelect={choose} characters={characters} state={state} activeTasks={workingIds} onTaskRequest={runTask} onTaskComplete={completeTask} onTaskError={taskError} onLocation={setLocation}/></Suspense>
       <div className="map-hint"><span className="mouse-icon">⌖</span> Arrastra para explorar <span className="hint-separator">·</span> rueda para acercar</div>
       <div className="zoom-controls"><button onClick={() => zoomBy(-100)} aria-label="Acercar"><Plus size={17}/></button><button onClick={() => zoomBy(100)} aria-label="Alejar"><Minus size={17}/></button></div>
       {location && <div className="room-heading"><span>{interiors[location].title}</span><button className="secondary-button" onClick={() => { setSelected(null); window.dispatchEvent(new Event('farm-exit')); }}>← Salir al exterior</button></div>}
@@ -101,14 +102,14 @@ export default function App() {
       <p className="eyebrow">{activeCharacter ? activeCharacter.role : activeWorker ? activeWorker.role : activeObject?.type === 'building' ? 'RINCÓN DE LA GRANJA' : activeObject?.type === 'plot' ? 'HUERTO' : 'UN MENSAJE PARA TI'}</p>
       <h2>{activeCharacter?.name ?? activeWorker?.name ?? activeObject?.title ?? petName ?? (activeMessage?'Un mensaje para ti':selected==='surprise-launcher'?'Una sorpresa en la plaza':selected === 'well' ? 'Pozo de agua' : 'Un rincón especial')}</h2>
       <p className="panel-description">{activeCharacter ? `“${characterLine}”` : activeWorker ? `${activeWorker.name} se ocupa de ${activeWorker.role.toLowerCase()}. Las tareas se completan al terminar su recorrido y trabajo.` : activeMessage?.text ?? (petName?'Un paseo, una siesta y un poquito de compañía.':selected==='surprise-launcher'?'Reunamos a la granja para celebrar a Pollito.':activeObject?.message ?? (activeDecoration?.id==='cake-table'?'Un pastel preparado con cariño para Pollito.':activeDecoration?.id==='ldc-tools'?'Pequeños recuerdos del esfuerzo y trabajo en equipo.':activeDecoration?.id==='gifts'?'La granja celebra contigo.':activeDecoration?.interaction?.text)) ?? 'Un pequeño detalle que hace más bonita la granja.'}</p>
-      {activeObject?.type === 'building' && <button className="primary-button enter-building" onClick={() => { setSelected(null); window.dispatchEvent(new CustomEvent('farm-enter', { detail: activeObject.id })); }}>Visitar interior existente <ArrowUpRight size={16}/></button>}
+      {activeObject?.type === 'building' && interiors[activeObject.id as InteriorId] && <button className="primary-button enter-building" onClick={() => { setSelected(null); window.dispatchEvent(new CustomEvent('farm-enter', { detail: activeObject.id })); }}>Entrar al interior <ArrowUpRight size={16}/></button>}
       {activeObject?.taskIds && <div className="panel-tasks">{activeObject.taskIds.map(id => <TaskRow key={id} id={id} state={state} onRun={runTask} onAssign={assign} disabled={workingIds.includes(id)}/>)}</div>}
       {activeCharacter && <button className="secondary-button" onClick={() => { setNotice(characterLine); setDialogueTurn(current => ({ ...current, [activeCharacter.id]: (current[activeCharacter.id] ?? 0) + 1 })); }}>Hablar un poquito <ArrowUpRight size={15}/></button>}
       {selected==='surprise-launcher'&&<button className="primary-button" onClick={startSurprise} disabled={celebrationPhase!=='idle'}>🎆 Iniciar sorpresa</button>}
       {selected === 'well' && <span className="quiet-note">Agua fresca, cortesía de la granja.</span>}
     </div>}
 
-    {selected === 'tasks' && <div className="task-drawer"><div className="drawer-heading"><div><p className="eyebrow">EL DÍA A DÍA</p><h2>Cuidados de la granja</h2></div><button className="close-button" onClick={() => setSelected(null)} aria-label="Cerrar"><X size={18}/></button></div><p className="drawer-intro">La Jefa puede encargarse o dejar el trabajo en buenas alas.</p>{Object.keys(state.tasks).map(id => <TaskRow key={id} id={id as TaskId} state={state} onRun={runTask} onAssign={assign} disabled={workingIds.includes(id as TaskId)}/>)}<div className="drawer-foot"><House size={15}/> Un paso a la vez. La granja te lo agradece.</div></div>}
+    {selected === 'tasks' && <div className="task-drawer"><div className="drawer-heading"><div><p className="eyebrow">EL DÍA A DÍA</p><h2>{location?interiors[location].title:'Cuidados de la granja'}</h2></div><button className="close-button" onClick={() => setSelected(null)} aria-label="Cerrar"><X size={18}/></button></div><p className="drawer-intro">{location?'Toca un letrero del establo o envía a una persona encargada.':'La Jefa puede encargarse o dejar el trabajo en buenas alas.'}</p>{(Object.keys(state.tasks) as TaskId[]).filter(id=>!location||taskRoutes[id].room===location).map(id => <TaskRow key={id} id={id} state={state} onRun={runTask} onAssign={assign} disabled={workingIds.includes(id)}/>)}<div className="drawer-foot"><House size={15}/> Un paso a la vez. La granja te lo agradece.</div></div>}
   </main>;
 }
 

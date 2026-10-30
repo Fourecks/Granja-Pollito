@@ -4,7 +4,7 @@ import type { InteriorId } from '../data/world';
 import type { FarmState, TaskId } from '../domain';
 export interface SceneProps {
  selected: string | null; onSelect: (id:string)=>void; characters:CharacterData[];
- state:FarmState; activeTasks:TaskId[]; onTaskComplete:(id:TaskId)=>void; onTaskError:(id:TaskId,message:string)=>void;
+ state:FarmState; activeTasks:TaskId[]; onTaskRequest:(id:TaskId)=>void; onTaskComplete:(id:TaskId)=>void; onTaskError:(id:TaskId,message:string)=>void;
  onLocation:(id:InteriorId|null)=>void;
 }
 export interface FarmRuntime {

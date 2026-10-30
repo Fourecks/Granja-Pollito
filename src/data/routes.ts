@@ -15,10 +15,21 @@ export const workers: Worker[] = [
 ];
 export interface TaskRoute { worker: string; room: InteriorId; point: Point; interiorPoint: Point; action: string; duration: number; }
 export const taskRoutes: Record<TaskId,TaskRoute> = {
- 'feed-chickens':{worker:'minnie',room:'coop',point:point(325,430),interiorPoint:[1280,445],action:'Sirviendo semillas',duration:2500},
- 'collect-eggs':{worker:'kiara',room:'coop',point:point(399,427),interiorPoint:[830,355],action:'Recogiendo huevos',duration:2400},
- 'clean-coop':{worker:'pollito',room:'coop',point:point(360,449),interiorPoint:[435,475],action:'Agua fresca y paja limpia',duration:2700},
+ 'feed-chickens':{worker:'minnie',room:'coop',point:point(325,430),interiorPoint:[1190,515],action:'Sirviendo semillas',duration:2500},
+ 'collect-eggs':{worker:'kiara',room:'coop',point:point(399,427),interiorPoint:[835,360],action:'Recogiendo huevos',duration:2400},
+ 'clean-coop':{worker:'pollito',room:'coop',point:point(360,449),interiorPoint:[460,535],action:'Agua fresca y paja limpia',duration:2700},
+ 'prepare-dust-bath':{worker:'pollito',room:'coop',point:point(360,449),interiorPoint:[590,610],action:'Preparando un baño de polvo',duration:2400},
  'water-crops':{worker:'pollito',room:'shed',point:point(1090,495),interiorPoint:[835,530],action:'Regando las hortalizas',duration:2800},
- 'feed-cows':{worker:'minnie',room:'barn',point:point(1057,366),interiorPoint:[1060,540],action:'Sirviendo heno',duration:2500},
- 'collect-milk':{worker:'kiara',room:'barn',point:point(1090,364),interiorPoint:[1070,540],action:'Ordeñando a Margarita',duration:4000},
+ 'feed-cows':{worker:'minnie',room:'barn',point:point(1057,366),interiorPoint:[1250,540],action:'Sirviendo heno',duration:2500},
+ 'collect-milk':{worker:'kiara',room:'barn',point:point(1090,364),interiorPoint:[460,540],action:'Ordeñando a Margarita',duration:4000},
+ 'feed-goats':{worker:'minnie',room:'goat-shelter',point:entry('goat-shelter'),interiorPoint:[450,545],action:'Sirviendo heno a las cabras',duration:2600},
+ 'groom-goats':{worker:'kiara',room:'goat-shelter',point:entry('goat-shelter'),interiorPoint:[1190,550],action:'Cepillando a las cabras',duration:3000},
+ 'clean-goat-shelter':{worker:'pollito',room:'goat-shelter',point:entry('goat-shelter'),interiorPoint:[850,660],action:'Barriendo el corral de cabras',duration:3000},
+ 'feed-horses':{worker:'minnie',room:'horse-stable',point:entry('horse-stable'),interiorPoint:[470,545],action:'Sirviendo heno a los caballos',duration:2800},
+ 'brush-horses':{worker:'kiara',room:'horse-stable',point:entry('horse-stable'),interiorPoint:[1190,545],action:'Cepillando a los caballos',duration:3200},
+ 'wash-horses':{worker:'pollito',room:'horse-stable',point:entry('horse-stable'),interiorPoint:[600,650],action:'Bañando a los caballos',duration:3600},
+ 'clean-stable':{worker:'minnie',room:'horse-stable',point:entry('horse-stable'),interiorPoint:[880,650],action:'Limpiando los boxes',duration:3100},
+ 'feed-pigs':{worker:'minnie',room:'pig-shelter',point:entry('pig-shelter'),interiorPoint:[250,555],action:'Sirviendo comida a los cerdos',duration:2600},
+ 'mud-bath-pigs':{worker:'kiara',room:'pig-shelter',point:entry('pig-shelter'),interiorPoint:[1220,530],action:'Preparando el baño de lodo',duration:3000},
+ 'clean-pig-pen':{worker:'pollito',room:'pig-shelter',point:entry('pig-shelter'),interiorPoint:[860,665],action:'Limpiando el corral de los cerdos',duration:3000},
 };

@@ -1,12 +1,12 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { DEFAULT_STATE, type FarmState } from './domain';
+import { DEFAULT_STATE, normalizeFarmState, type FarmState } from './domain';
 
 const STORAGE_KEY = 'granja-pollito-state-v1';
 export interface FarmRepository { load(): Promise<FarmState>; save(state: FarmState): Promise<void>; }
 
 class LocalFarmRepository implements FarmRepository {
   async load() {
-    try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? { ...structuredClone(DEFAULT_STATE), ...JSON.parse(raw) } as FarmState : structuredClone(DEFAULT_STATE); }
+    try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? normalizeFarmState(JSON.parse(raw)) : structuredClone(DEFAULT_STATE); }
     catch { return structuredClone(DEFAULT_STATE); }
   }
   async save(state: FarmState) { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
@@ -33,7 +33,7 @@ class SupabaseFarmRepository implements FarmRepository {
       const ownerId = await this.ready;
       const { data, error } = await this.client.from('farm_state').select('state').eq('owner_id', ownerId).maybeSingle();
       if (error) throw error;
-      if (data?.state) { await this.cache.save(data.state as FarmState); return { ...structuredClone(DEFAULT_STATE), ...data.state } as FarmState; }
+      if (data?.state) { const state=normalizeFarmState(data.state as Partial<FarmState>); await this.cache.save(state); return state; }
       const local = await this.cache.load(); await this.save(local); return local;
     } catch (error) { console.warn('Supabase no está disponible; se usa el progreso local.', error); return this.cache.load(); }
   }
