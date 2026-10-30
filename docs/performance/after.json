@@ -1,0 +1,26 @@
+{
+  "initMs": 1605.93,
+  "routes": [
+    {
+      "name": "plaza-stable",
+      "ms": 14.81,
+      "waypoints": 3
+    },
+    {
+      "name": "plaza-cows",
+      "ms": 38.74,
+      "waypoints": 2
+    },
+    {
+      "name": "plaza-goats",
+      "ms": 572.16,
+      "waypoints": 9
+    }
+  ],
+  "livestock": {
+    "samples": 1250,
+    "totalMs": 86.18,
+    "p95Ms": 0.126,
+    "maxMs": 1.87
+  }
+}

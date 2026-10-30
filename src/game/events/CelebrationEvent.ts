@@ -24,10 +24,10 @@ export class CelebrationEvent {
   if(this.phase==='idle')return;
   if(this.phase==='gathering'){
    // One route per frame avoids an A* spike when the whole farm gathers.
-   if(time-this.lastPlan>60){const a=this.members.find(a=>!this.scene.isBusy(a.id)&&!this.planned.has(a.id));if(a){const index=this.members.indexOf(a),point=celebrationHumans[a.id]??gatheringPoints[index%gatheringPoints.length];const path=a.nav.path([a.x,a.y],point);if(path.length){a.eventTarget=point;a.sleeping=false;a.route=path;this.planned.add(a.id);}else{this.members=this.members.filter(m=>m!==a);}}this.lastPlan=time;}
+   if(time-this.lastPlan>60){const a=this.members.find(a=>!this.scene.isBusy(a.id)&&!this.planned.has(a.id));if(a){const index=this.members.indexOf(a),point=celebrationHumans[a.id]??gatheringPoints[index%gatheringPoints.length];a.eventTarget=point;a.sleeping=false;this.planned.add(a.id);this.scene.requestRoute(a,point,path=>{if(!path.length){a.eventTarget=undefined;this.members=this.members.filter(m=>m!==a);}},1);}this.lastPlan=time;}
    // New jobs retain priority and are never lost. Rejoin after finishing.
    for(const a of this.members)if(this.scene.isBusy(a.id))this.planned.delete(a.id);
-   if(this.members.length&&this.members.every(a=>this.planned.has(a.id)&&!a.route.length&&!this.scene.isBusy(a.id))){this.beginShow();}
+   if(this.members.length&&this.members.every(a=>this.planned.has(a.id)&&!a.route.length&&!this.scene.routeQueue.has(a.id)&&!this.scene.isBusy(a.id))){this.beginShow();}
    return;
   }
   if(this.phase==='show'){

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { RouteQueue } from './RouteQueue';
 import { NavigationGrid, type Point } from './navigation';
 import { SCALE } from './world/mapConfig';
 import { workers, taskRoutes } from '../data/routes';
@@ -10,9 +11,10 @@ export interface Actor {
  id:string; kind:'chick'|'worker'|'cow'|'dog'; row:number; x:number; y:number; home:Point; patrol:Point[]; route:Point[]; step:number;
  sprite:Phaser.GameObjects.Sprite; shadow:Phaser.GameObjects.Ellipse; nav:NavigationGrid; nextPatrol:number; sleeping?:boolean; state:'IDLE'|'WALK'|'WORK'|'OBSERVE'|'CELEBRATE'|'RUN'|'SIT'|'SLEEP'|'FOLLOW'|'DANCE'|'LOOK_UP'; eventTarget?:Point; accessory?:Phaser.GameObjects.Graphics; variant?:number; workerChick?:boolean;
 }
-interface Job {task:TaskId;worker:Actor;phase:'walk'|'action';until:number;effect:Phaser.GameObjects.Container|null;}
+interface Job {task:TaskId;worker:Actor;phase:'planning'|'walk'|'action';until:number;effect:Phaser.GameObjects.Container|null;}
 export abstract class WorldScene extends Phaser.Scene {
  actors:Actor[]=[]; controls!:CameraControls; nav!:NavigationGrid;
+ readonly routeQueue=new RouteQueue();
  protected jobs=new Map<string,Job>(); protected interior=false;
  constructor(key:string,protected runtime:FarmRuntime){super(key);}
  protected actor(id:string,kind:Actor['kind'],point:Point,patrol:Point[],nav:NavigationGrid,row=0,sleeping=false):Actor {
@@ -26,10 +28,15 @@ export abstract class WorldScene extends Phaser.Scene {
   const actor:Actor={id,kind,row,x:initial[0],y:initial[1],home:initial,patrol,route:[],step:0,sprite,shadow,nav,nextPatrol:1000+this.actors.length*370,sleeping,state:sleeping?'SLEEP':'IDLE'};this.actors.push(actor);return actor;
  }
  isBusy(id:string){return this.runtime.busyWorkers.has(id);}
+ requestRoute(actor:Actor,goal:Point,done?:(route:Point[])=>void,priority=0){
+  actor.route=[];
+  this.routeQueue.request(actor.id,actor.nav.pathSteps([actor.x,actor.y],goal),route=>{actor.route=route;done?.(route);},priority);
+ }
  protected addDogs(){const dogs=[this.actor('chispa','dog',[718,439],globalDestinations,this.nav,0),this.actor('nube-dog','dog',[848,448],[...globalDestinations].reverse(),this.nav,1)];dogs.forEach(dog=>dog.accessory=this.add.graphics());}
- protected addWorkers(points?:Point[]){workers.forEach((worker,i)=>this.actor(worker.id,'worker',points?.[i]??worker.home,points?[[points[i][0]+35,points[i][1]],[points[i][0]-25,points[i][1]+25]]:worker.path,this.nav,worker.row));}
+ protected addWorkers(points?:Point[]){this.events.once('shutdown',()=>this.routeQueue.clear());workers.forEach((worker,i)=>this.actor(worker.id,'worker',points?.[i]??worker.home,points?[[points[i][0]+35,points[i][1]],[points[i][0]-25,points[i][1]+25]]:worker.path,this.nav,worker.row));}
  update(time:number,elapsed:number){
   const delta=Math.min(elapsed,80);this.controls?.update(delta);
+  this.routeQueue.update();
   const props=this.runtime.props.current;
   for(const task of this.runtime.completed) if(!props.activeTasks.includes(task)){this.runtime.completed.delete(task);this.runtime.owners.delete(task);}
   for(const task of props.activeTasks){
@@ -43,19 +50,22 @@ export abstract class WorldScene extends Phaser.Scene {
    if(this.jobs.has(workerId)||this.runtime.busyWorkers.has(workerId))continue;
    const worker=this.actors.find(a=>a.id===workerId);if(!worker)continue;
    const goal=this.interior?route.interiorPoint:route.point;
-   const path=worker.nav.path([worker.x,worker.y],goal);
-   if(!path.length){this.runtime.completed.add(task);props.onTaskError(task,'No hay una ruta transitable hacia esta tarea.');continue;}
-   worker.route=path;worker.sleeping=false;worker.state='WALK';
+   worker.sleeping=false;worker.state='IDLE';
    this.runtime.busyWorkers.set(workerId,task);
-   this.jobs.set(workerId,{task,worker,phase:'walk',until:0,effect:null});
+   const job:Job={task,worker,phase:'planning',until:0,effect:null};this.jobs.set(workerId,job);
+   this.requestRoute(worker,goal,path=>{
+    if(!path.length){this.jobs.delete(workerId);this.runtime.busyWorkers.delete(workerId);this.runtime.completed.add(task);this.runtime.props.current.onTaskError(task,'No hay una ruta transitable hacia esta tarea.');return;}
+    job.phase='walk';worker.state='WALK';
+   },2);
   }
   for(const actor of this.actors){
    const job=this.jobs.get(actor.id);
    const sharedTask=this.runtime.busyWorkers.get(actor.id),elsewhere=sharedTask&&this.runtime.owners.get(sharedTask)!==this.sys.settings.key;
    actor.shadow.setVisible(!elsewhere);if(elsewhere){actor.sprite.setVisible(false);actor.accessory?.setVisible(false);continue;}
+   if(this.routeQueue.has(actor.id))continue;
    if(job?.phase==='action'){actor.state='WORK';
     actor.sprite.setFlipX(job.task==='collect-milk').setFrame(actor.row*4+3).setY(actor.y+Math.sin(time/180)*.6);
-    if(time>=job.until){job.effect?.destroy();this.jobs.delete(actor.id);this.runtime.busyWorkers.delete(actor.id);this.runtime.completed.add(job.task);this.runtime.props.current.onTaskComplete(job.task);actor.route=actor.nav.path([actor.x,actor.y],actor.home);actor.nextPatrol=time+6500;}
+    if(time>=job.until){job.effect?.destroy();this.jobs.delete(actor.id);this.runtime.busyWorkers.delete(actor.id);this.runtime.completed.add(job.task);this.runtime.props.current.onTaskComplete(job.task);this.requestRoute(actor,actor.home);actor.nextPatrol=time+6500;}
     continue;
    }
    if(actor.route.length){if(!['RUN','FOLLOW'].includes(actor.state))actor.state='WALK';
@@ -76,7 +86,7 @@ export abstract class WorldScene extends Phaser.Scene {
     if(actor.kind==='worker'&&!actor.eventTarget)actor.state=actor.step%3===0?'WORK':actor.step%3===1?'OBSERVE':'IDLE';
     if(actor.kind==='dog'&&!actor.eventTarget)actor.state=(['IDLE','SIT','SLEEP','OBSERVE'][actor.step%4] as Actor['state']);
     actor.sprite.setPosition(actor.x,actor.y+Math.sin(time/(actor.kind==='cow'?1100:650))*.3).setFrame(actor.kind==='cow'?(Math.floor(time/7000)%2):actor.kind==='worker'?actor.row*4+(actor.state==='WORK'?3:0):actor.kind==='dog'?actor.row*4+(['SIT','SLEEP'].includes(actor.state)?3:0):actor.sleeping?3:Math.floor(time/2900)%3===0?3:0);
-    if(time>actor.nextPatrol&&!actor.sleeping&&!actor.eventTarget&&actor.patrol.length){let target=actor.patrol[actor.step++%actor.patrol.length];if(actor.kind==='dog'&&actor.step%3===0){const human=this.actors.filter(a=>a.kind===((actor.step%6===0)?'chick':'worker'))[Math.floor(actor.step/3)%3];if(human){const near:Point=[human.x+(actor.row?-18:18),human.y+(actor.row?18:12)];if(actor.nav.canWalk(...near))target=near;actor.state='FOLLOW';}}else if(actor.kind==='dog')actor.state=actor.step%2?'RUN':'WALK';actor.route=actor.nav.path([actor.x,actor.y],target);if(actor.kind!=='dog')actor.state=actor.step%3?'OBSERVE':'IDLE';actor.nextPatrol=time+4500+(actor.step%4)*1800;}
+    if(time>actor.nextPatrol&&!actor.sleeping&&!actor.eventTarget&&actor.patrol.length){let target=actor.patrol[actor.step++%actor.patrol.length];if(actor.kind==='dog'&&actor.step%3===0){const human=this.actors.filter(a=>a.kind===((actor.step%6===0)?'chick':'worker'))[Math.floor(actor.step/3)%3];if(human){const near:Point=[human.x+(actor.row?-18:18),human.y+(actor.row?18:12)];if(actor.nav.canWalk(...near))target=near;actor.state='FOLLOW';}}else if(actor.kind==='dog')actor.state=actor.step%2?'RUN':'WALK';this.requestRoute(actor,target);if(actor.kind!=='dog')actor.state=actor.step%3?'OBSERVE':'IDLE';actor.nextPatrol=time+4500+(actor.step%4)*1800;}
    }
    if((actor.eventTarget||actor.state==='DANCE')&&!actor.route.length){actor.sprite.y-=actor.kind==='dog'?0:Math.max(0,Math.sin(time/140+actor.row))*3;actor.sprite.setFrame(actor.kind==='dog'?actor.row*4+3:actor.kind==='worker'?actor.row*4+3:actor.variant===4?0:3);}
    // Helmet and hammer belong to the complete character frames, never an overlay.
@@ -95,7 +105,7 @@ export abstract class WorldScene extends Phaser.Scene {
    this.actors.filter(actor=>actor.kind==='cow').forEach(cow=>{cow.route=[];cow.nextPatrol=this.time.now+6000;});
   }else if(job.task==='feed-chickens'){
    g.fillStyle(0xe8c27c);for(let i=0;i<16;i++)g.fillRect((i*17)%30-15,(i*11)%14,2,2);
-   this.actors.filter(actor=>actor.kind==='chick').slice(0,7).forEach((chick,i)=>{const target:Point=[a.x+20+(i%3)*9,a.y+7+Math.floor(i/3)*8];if(chick.nav.canWalk(...target)){chick.route=chick.nav.path([chick.x,chick.y],target);chick.nextPatrol=this.time.now+8000;}});
+   this.actors.filter(actor=>actor.kind==='chick').slice(0,7).forEach((chick,i)=>{const target:Point=[a.x+20+(i%3)*9,a.y+7+Math.floor(i/3)*8];if(chick.nav.canWalk(...target)){this.requestRoute(chick,target);chick.nextPatrol=this.time.now+8000;}});
   }else if(job.task==='collect-eggs'){
    g.fillStyle(0xb68041).fillRect(-8,-7,19,12);g.fillStyle(0xffedbb);for(let i=0;i<3;i++)g.fillRect(-5+i*5,-11,4,6);
   }else{

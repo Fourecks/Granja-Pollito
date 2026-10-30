@@ -72,6 +72,8 @@ export function cliffFaceColor(gx:number,gy:number,masks:WorldMasks){
  return color;
 }
 export class TerrainLayers {
+ private visibilityBounds:Array<{object:Phaser.GameObjects.Image;x:number;y:number;right:number;bottom:number}>=[];
+ private lastView?:{x:number;y:number;width:number;height:number};
  readonly masks=createMasks(); private roadPixels=visualRoadMask(this.masks.surfaces,this.masks); readonly objects:Phaser.GameObjects.Image[]=[];
  constructor(private scene:Phaser.Scene){
   this.chunks('water',-30);this.chunks('terrain',-20);this.chunks('surfaces',-18);this.chunks('paths',-17);this.chunks('topography',-16);
@@ -110,5 +112,11 @@ export class TerrainLayers {
    const view=this.scene.add.image(cx*2,cy*2,key).setOrigin(0).setScale(2).setDepth(depth);this.objects.push(view);
   }
  }
- cull(){const view=this.scene.cameras.main.worldView;for(const o of this.objects){const bounds=o.getBounds();o.setVisible(Phaser.Geom.Rectangle.Overlaps(view,bounds));}}
+ cull(){
+  const view=this.scene.cameras.main.worldView,last=this.lastView;
+  if(last&&Math.abs(view.x-last.x)<24&&Math.abs(view.y-last.y)<24&&view.width===last.width&&view.height===last.height)return;
+  this.lastView={x:view.x,y:view.y,width:view.width,height:view.height};
+  if(!this.visibilityBounds.length)this.visibilityBounds=this.objects.map(object=>{const b=object.getBounds();return {object,x:b.x,y:b.y,right:b.right,bottom:b.bottom};});
+  for(const b of this.visibilityBounds)b.object.setVisible(b.right>=view.x-48&&b.x<=view.right+48&&b.bottom>=view.y-48&&b.y<=view.bottom+48);
+ }
 }

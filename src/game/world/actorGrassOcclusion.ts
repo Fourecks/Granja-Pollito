@@ -3,7 +3,7 @@ import type { Actor } from '../WorldScene';
 import { drawGrass } from './grassArt';
 import type { VisualPlant } from './vegetationOccupancy';
 import { WaterHabitat } from './waterHabitat';
-interface Patch {key:string;image:Phaser.GameObjects.Image;canvas:HTMLCanvasElement;lastX:number;lastY:number;cover:number;}
+interface Patch {key:string;image:Phaser.GameObjects.Image;canvas:HTMLCanvasElement;lastX:number;lastY:number;cover:number;nextPaint:number;}
 /** A tiny, recycled foreground patch per visible actor; physics and animation remain untouched. */
 export class ActorGrassOcclusionLayer {
  private patches=new Map<string,Patch>();private growth=new Map<string,VisualPlant[]>();
@@ -40,10 +40,11 @@ export class ActorGrassOcclusionLayer {
    if(!cover||!actor.sprite.visible||!view.contains(actor.x,actor.y)){patch?.image.setVisible(false);continue;}
    if(!patch){const canvas=document.createElement('canvas');canvas.width=96;canvas.height=48;const key=`actor-front-grass-${actor.id}`;
     if(this.scene.textures.exists(key))this.scene.textures.remove(key);this.scene.textures.addCanvas(key,canvas);
-    patch={key,canvas,image:this.scene.add.image(0,0,key).setOrigin(.5,1).setScale(1),lastX:Infinity,lastY:Infinity,cover:0};this.patches.set(actor.id,patch);
+    patch={key,canvas,image:this.scene.add.image(0,0,key).setOrigin(.5,1).setScale(1),lastX:Infinity,lastY:Infinity,cover:0,nextPaint:0};this.patches.set(actor.id,patch);
    }
    const x=Math.round(actor.x),y=Math.round(footY);
-   if(x!==patch.lastX||y!==patch.lastY||cover!==patch.cover){
+   if(this.scene.time.now>=patch.nextPaint&&(Math.abs(x-patch.lastX)>=3||Math.abs(y-patch.lastY)>=3||cover!==patch.cover)){
+    patch.nextPaint=this.scene.time.now+80;
     const c=patch.canvas.getContext('2d',{willReadFrequently:true})!;c.clearRect(0,0,96,48);c.imageSmoothingEnabled=false;
     const span=Math.min(60,actor.sprite.displayWidth*.50),profile={width:cover>8?13:9,height:Math.ceil(cover),blades:cover>8?5:3};
     // World-anchored seeds prevent random popping and keep blade height consistent at each footfall.

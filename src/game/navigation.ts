@@ -12,6 +12,7 @@ export function inside(point: Point, polygon: Polygon): boolean {
 }
 export interface NavigationGate {id:string;shape:Polygon;open:boolean;}
 export interface NavigationData { gates?:NavigationGate[];canOpenGates?:boolean; width: number; height: number; walkable: Polygon[]; obstacles: Polygon[]; bridges?: Polygon[]; water?:Polygon[]; waterIslands?:Polygon[]; passages?:Polygon[]; terrainObstacles?:Polygon[]; swims?:boolean; cell?:number; }
+interface BoundaryEdge {a:Point;b:Point;minX:number;maxX:number;minY:number;maxY:number;}
 export class NavigationGrid {
   readonly cell: number;
   private cols: number;
@@ -22,10 +23,22 @@ export class NavigationGrid {
   private edges=new Map<number,boolean>();
   private obstacleBuckets=new Map<string,Polygon[]>();
   private bounds=new Map<Polygon,{minX:number;maxX:number;minY:number;maxY:number}>();
+  private boundaryBuckets=new Map<string,BoundaryEdge[]>();
+  private polygonBands=new Map<Polygon,Map<number,BoundaryEdge[]>>();
+  private probes:Point[];
   constructor(readonly data: NavigationData, readonly radius = 3) {
     this.cell=data.cell??8;
-    for(const poly of [...data.walkable,...data.obstacles,...(data.water??[]),...(data.waterIslands??[]),...(data.bridges??[]),...(data.passages??[]),...(data.gates??[]).map(g=>g.shape)]){
+    const r=radius;this.probes=[[0,0],[r,0],[-r,0],[0,r],[0,-r],[r*.707,r*.707],[-r*.707,r*.707],[r*.707,-r*.707],[-r*.707,-r*.707]];
+    for(const poly of new Set([...data.walkable,...data.obstacles,...(data.water??[]),...(data.waterIslands??[]),...(data.bridges??[]),...(data.passages??[]),...(data.gates??[]).map(g=>g.shape)])){
       const xs=poly.map(p=>p[0]),ys=poly.map(p=>p[1]);this.bounds.set(poly,{minX:Math.min(...xs),maxX:Math.max(...xs),minY:Math.min(...ys),maxY:Math.max(...ys)});
+      const bands=new Map<number,BoundaryEdge[]>();this.polygonBands.set(poly,bands);
+      for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+        const a=poly[i],b=poly[j],edge={a,b,minX:Math.min(a[0],b[0]),maxX:Math.max(a[0],b[0]),minY:Math.min(a[1],b[1]),maxY:Math.max(a[1],b[1])};
+        for(let y=Math.floor(edge.minY/128);y<=Math.floor(edge.maxY/128);y++){
+          const row=bands.get(y)??[];row.push(edge);bands.set(y,row);
+          for(let x=Math.floor(edge.minX/128);x<=Math.floor(edge.maxX/128);x++){const key=`${x},${y}`,bucket=this.boundaryBuckets.get(key)??[];bucket.push(edge);this.boundaryBuckets.set(key,bucket);}
+        }
+      }
     }
     for(const poly of data.obstacles){const b=this.bounds.get(poly)!;for(let y=Math.floor(b.minY/128);y<=Math.floor(b.maxY/128);y++)for(let x=Math.floor(b.minX/128);x<=Math.floor(b.maxX/128);x++){const key=`${x},${y}`,list=this.obstacleBuckets.get(key)??[];list.push(poly);this.obstacleBuckets.set(key,list);}}
 
@@ -47,6 +60,18 @@ export class NavigationGrid {
 
     for (let y = 0; y < this.rows; y++) for (let x = 0; x < this.cols; x++) this.cells[y * this.cols + x] = this.canWalk(...this.center(y * this.cols + x)) ? 1 : 0;
   }
+  /** Same exact ray test as inside(), restricted to edges that can cross this row. */
+  private contains(point:Point,polygon:Polygon):boolean {
+    const bounds=this.bounds.get(polygon)!;const [x,y]=point;
+    if(x<bounds.minX||x>bounds.maxX||y<bounds.minY||y>bounds.maxY)return false;
+    let result=false;
+    for(const {a:[xi,yi],b:[xj,yj]} of this.polygonBands.get(polygon)!.get(Math.floor(y/128))??[]){
+      const cross=(x-xi)*(yj-yi)-(y-yi)*(xj-xi);
+      if(Math.abs(cross)<1e-7&&x>=Math.min(xi,xj)&&x<=Math.max(xi,xj)&&y>=Math.min(yi,yj)&&y<=Math.max(yi,yj))return true;
+      if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)result=!result;
+    }
+    return result;
+  }
   forGateAccess(canOpenGates:boolean):NavigationGrid {
     if(!this.data.gates?.length||this.data.canOpenGates===canOpenGates)return this;
     let view=this.gateViews.get(canOpenGates);if(!view){view=new NavigationGrid({...this.data,canOpenGates},this.radius);this.gateViews.set(canOpenGates,view);}return view;
@@ -55,16 +80,15 @@ export class NavigationGrid {
     return !(this.data.gates??[]).some(g=>!g.open&&[[0,0],[this.radius,0],[-this.radius,0],[0,this.radius],[0,-this.radius]].some(([dx,dy])=>inside([x+dx,y+dy],g.shape)));
   }
   canWalk(x: number, y: number): boolean {
-    const r=this.radius;
-    for (const [dx, dy] of [[0,0],[r,0],[-r,0],[0,r],[0,-r],[r*.707,r*.707],[-r*.707,r*.707],[r*.707,-r*.707],[-r*.707,-r*.707]]) {
+    for (const [dx, dy] of this.probes) {
       const point:Point=[x+dx,y+dy];
-      if(!this.data.canOpenGates&&this.data.gates?.some(g=>!g.open&&inside(point,g.shape)))return false;
+      if(!this.data.canOpenGates&&this.data.gates?.some(g=>!g.open&&this.contains(point,g.shape)))return false;
       if(point[0]<0||point[1]<0||point[0]>=this.data.width||point[1]>=this.data.height)return false;
-      const water=this.data.water?.some(poly=>inside(point,poly))&&!this.data.waterIslands?.some(poly=>inside(point,poly));
-      const onBridge=this.data.bridges?.some(poly=>inside(point,poly));
+      const water=this.data.water?.some(poly=>this.contains(point,poly))&&!this.data.waterIslands?.some(poly=>this.contains(point,poly));
+      const onBridge=this.data.bridges?.some(poly=>this.contains(point,poly));
       if(water&&!onBridge&&!this.data.swims)return false;
-      if(!this.data.walkable.some(poly=>inside(point,poly))&&!(water&&this.data.swims))return false;
-      if((this.obstacleBuckets.get(`${Math.floor(point[0]/128)},${Math.floor(point[1]/128)}`)??[]).some(poly=>inside(point,poly)&&!(this.data.terrainObstacles?.includes(poly)&&this.data.passages?.some(p=>inside(point,p)))))return false;
+      if(!this.data.walkable.some(poly=>this.contains(point,poly))&&!(water&&this.data.swims))return false;
+      if((this.obstacleBuckets.get(`${Math.floor(point[0]/128)},${Math.floor(point[1]/128)}`)??[]).some(poly=>this.contains(point,poly)&&!(this.data.terrainObstacles?.includes(poly)&&this.data.passages?.some(p=>this.contains(point,p)))))return false;
     }
     return true;
   }
@@ -72,15 +96,15 @@ export class NavigationGrid {
     // Split at every terrain boundary for each footprint probe. Midpoints prove
     // continuous clearance, including narrow fence corners missed by sampling.
     const dx=b[0]-a[0],dy=b[1]-a[1],cuts=[0,1];
-    for(const [ox,oy] of [[0,0],[this.radius,0],[-this.radius,0],[0,this.radius],[0,-this.radius],[this.radius*.707,this.radius*.707],[-this.radius*.707,this.radius*.707],[this.radius*.707,-this.radius*.707],[-this.radius*.707,-this.radius*.707]]){
-     for(const polygon of [...this.data.walkable,...this.data.obstacles,...(this.data.water??[]),...(this.data.waterIslands??[]),...(this.data.bridges??[]),...(this.data.passages??[]),...(this.data.gates??[]).map(g=>g.shape)]){
-      const bounds=this.bounds.get(polygon)!;
-      if(bounds.maxX<Math.min(a[0],b[0])+ox||bounds.minX>Math.max(a[0],b[0])+ox||bounds.maxY<Math.min(a[1],b[1])+oy||bounds.minY>Math.max(a[1],b[1])+oy)continue;
-      for(let i=0;i<polygon.length;i++){
-      const c=polygon[i],d=polygon[(i+1)%polygon.length],ex=d[0]-c[0],ey=d[1]-c[1],den=dx*ey-dy*ex;if(Math.abs(den)<1e-9)continue;
+    const minX=Math.min(a[0],b[0]),maxX=Math.max(a[0],b[0]),minY=Math.min(a[1],b[1]),maxY=Math.max(a[1],b[1]),candidates=new Set<BoundaryEdge>();
+    for(let y=Math.floor((minY-this.radius)/128);y<=Math.floor((maxY+this.radius)/128);y++)for(let x=Math.floor((minX-this.radius)/128);x<=Math.floor((maxX+this.radius)/128);x++)for(const edge of this.boundaryBuckets.get(`${x},${y}`)??[])candidates.add(edge);
+    for(const [ox,oy] of this.probes){
+     for(const edge of candidates){
+      if(edge.maxX<minX+ox||edge.minX>maxX+ox||edge.maxY<minY+oy||edge.minY>maxY+oy)continue;
+      const c=edge.a,d=edge.b,ex=d[0]-c[0],ey=d[1]-c[1],den=dx*ey-dy*ex;if(Math.abs(den)<1e-9)continue;
       const cx=c[0]-a[0]-ox,cy=c[1]-a[1]-oy,t=(cx*ey-cy*ex)/den,u=(cx*dy-cy*dx)/den;
       if(t>0&&t<1&&u>=0&&u<=1)cuts.push(t);
-     }}
+     }
     }
     cuts.sort((x,y)=>x-y);
     for(let i=0;i<cuts.length;i++){const t=cuts[i];if(!this.canWalk(a[0]+dx*t,a[1]+dy*t))return false;if(i){const mid=(t+cuts[i-1])/2;if(!this.canWalk(a[0]+dx*mid,a[1]+dy*mid))return false;}}
@@ -99,15 +123,21 @@ export class NavigationGrid {
     return this.center(best);
   }
   path(start: Point, goal: Point): Point[] {
+    const search=this.pathSteps(start,goal);let step=search.next();while(!step.done)step=search.next();return step.value;
+  }
+  /** Exact A*, exposed in small batches so the game can plan between rendered frames. */
+  *pathSteps(start:Point,goal:Point):Generator<void,Point[],unknown> {
     // Never silently move a destination out of water or through a solid object.
     if (!this.canWalk(...start) || !this.canWalk(...goal)) return [];
     if (this.segment(start, goal)) return [goal];
+    yield;
     const closest=(point:Point)=>{
-      const cx=Math.floor(point[0]/this.cell),cy=Math.floor(point[1]/this.cell);let best=-1,distance=Infinity;
-      for(let dy=-3;dy<=3;dy++)for(let dx=-3;dx<=3;dx++){const x=cx+dx,y=cy+dy;if(x<0||y<0||x>=this.cols||y>=this.rows)continue;const candidate=y*this.cols+x;if(!this.cells[candidate])continue;const center=this.center(candidate),d=Math.hypot(center[0]-point[0],center[1]-point[1]);if(d<distance&&this.segment(point,center)){best=candidate;distance=d;}}
-      return best;
+      const cx=Math.floor(point[0]/this.cell),cy=Math.floor(point[1]/this.cell),candidates:Array<{id:number;d:number}>=[];
+      for(let dy=-3;dy<=3;dy++)for(let dx=-3;dx<=3;dx++){const x=cx+dx,y=cy+dy;if(x<0||y<0||x>=this.cols||y>=this.rows)continue;const id=y*this.cols+x;if(!this.cells[id])continue;const center=this.center(id);candidates.push({id,d:(center[0]-point[0])**2+(center[1]-point[1])**2});}
+      candidates.sort((a,b)=>a.d-b.d);
+      return candidates.find(c=>this.segment(point,this.center(c.id)))?.id??-1;
     };
-    const first = closest(start), last = closest(goal);if(first<0||last<0)return [];
+    const first=closest(start);yield;const last=closest(goal);yield;if(first<0||last<0)return [];
     const visited = new Set<number>(),heap:Array<{id:number;score:number}>=[];
     const push=(id:number,score:number)=>{heap.push({id,score});let i=heap.length-1;while(i){const parent=(i-1)>>1;if(heap[parent].score<=score)break;[heap[parent],heap[i]]=[heap[i],heap[parent]];i=parent;}};
     const pop=()=>{const result=heap[0],last=heap.pop()!;if(heap.length){heap[0]=last;let i=0;for(;;){let child=i*2+1;if(child>=heap.length)break;if(child+1<heap.length&&heap[child+1].score<heap[child].score)child++;if(heap[i].score<=heap[child].score)break;[heap[i],heap[child]]=[heap[child],heap[i]];i=child;}}return result.id;};
@@ -121,11 +151,12 @@ export class NavigationGrid {
         while (cursor !== first) { points.unshift(this.center(cursor)); cursor = previous.get(cursor)!; }
         points.unshift(this.center(first));points.unshift(start);
         const result: Point[] = []; let i = 0;
-        while (i < points.length - 1) { let j = i + 1; while (j + 1 < points.length && this.segment(points[i], points[j + 1])) j++; result.push(points[j]); i = j; }
+        while (i < points.length - 1) { let j = i + 1; while (j + 1 < points.length && this.segment(points[i], points[j + 1])){j++;if(j%8===0)yield;} result.push(points[j]); i = j;yield; }
         let prior: Point = start; for (const point of result) { if (!this.segment(prior, point)) return []; prior = point; }
         return result;
       }
       visited.add(current);
+      if(visited.size%8===0)yield;
       const cx = current % this.cols, cy = Math.floor(current / this.cols);
       for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1,-1], [-1,1], [1,-1], [1,1]]) {
         const x = cx + dx, y = cy + dy, next = y * this.cols + x;
