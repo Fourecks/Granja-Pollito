@@ -70,6 +70,7 @@ export class ExteriorScene extends WorldScene {
   this.events.once('shutdown',()=>{this.actors=[];});
   if(import.meta.env.DEV&&new URLSearchParams(window.location.search).get('planning')==='1')new ZonePlanningOverlay(this);
   this.runtime.loading(false);camera.fadeIn(350);
+  if(import.meta.env.DEV&&new URLSearchParams(window.location.search).get('interior')==='coop')this.time.delayedCall(400,()=>void this.enter('coop'));
  }
  async enter(id:InteriorId){
   if(this.entering||this.runtime.room)return;this.entering=true;this.runtime.props.current.onSelect('');

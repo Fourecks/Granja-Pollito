@@ -25,13 +25,14 @@ export class InteriorScene extends WorldScene {
  private layers!:InteriorLayers; private id:InteriorId; private leaving=false; private animals:InteriorAnimal[]=[]; private careFx!:Phaser.GameObjects.Graphics;
  private manureMarks:Phaser.GameObjects.Graphics[]=[]; private stationLabels=new Map<TaskId,Phaser.GameObjects.Text>(); private careTask?:TaskId;
  constructor(runtime:FarmRuntime,id:InteriorId){super(`Interior-${id}`,runtime);this.id=id;this.interior=true;}
- preload(){if(!this.textures.exists('cows'))this.load.image('cows','/assets/cows-v2.webp');}
+ preload(){if(this.id==='coop'&&!this.textures.exists('coop-furniture'))this.load.image('coop-furniture','/assets/coop-furniture-v1.png');if(!this.textures.exists('cows'))this.load.image('cows','/assets/cows-v2.webp');}
  create(){
   createCowFrames(this);const config=interiors[this.id];
   this.layers=new InteriorLayers(this,this.id,()=>!this.controls?.moved,task=>this.runtime.props.current.onTaskRequest(task));
   this.nav=new NavigationGrid({width:1672,height:941,walkable:this.layers.walkable,obstacles:this.layers.obstacles,gates:this.layers.gates},7);
   const c=this.cameras.main,fit=Math.min(this.scale.width/1672,this.scale.height/941),ratio=Number(this.game.registry.get('renderRatio'))||1;
   c.setBounds(0,0,1672,941).setZoom(fit).centerOn(836,470);
+  if(this.id==='coop')c.removeBounds().centerOn(836,470).setBackgroundColor('#181820');
   this.controls=new CameraControls(this,fit,2.4*ratio,{width:1672,height:941},true);
   if(this.id!=='home')this.addWorkers(this.id==='shed'?[[780,550],[850,590],[910,560]]:[[710,550],[830,590],[930,560]]);
   if(this.id==='home')this.actor('la-jefa','worker',[910,580],[],this.nav,3);

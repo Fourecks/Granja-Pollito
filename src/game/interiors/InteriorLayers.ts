@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { CoopInterior } from './CoopInterior';
 import { rectangle, type Polygon } from '../navigation';
 import { advanceGate, type RuralGate, type GateActor } from '../world/ruralGates';
 import type { InteriorId } from '../../data/world';
@@ -10,6 +11,7 @@ export class InteriorLayers {
  readonly obstacles:Polygon[]=[];
  readonly gates:RuralGate[]=[];
  private water:Phaser.GameObjects.Graphics;
+ private coop?:CoopInterior;
  private gateArt:Phaser.GameObjects.Graphics[]=[];
  private pinned=new Set<string>();
  private straw:Phaser.GameObjects.Graphics[]=[];
@@ -18,6 +20,7 @@ export class InteriorLayers {
  private wet=false;
  private lastFrame=-1;
  constructor(private scene:Phaser.Scene,private id:InteriorId,canInteract:()=>boolean,onTask:(id:TaskId)=>void=()=>{}){
+  if(id==='coop'){this.coop=new CoopInterior(scene,canInteract,onTask);this.obstacles.push(...this.coop.obstacles);this.gates.push(...this.coop.gates);this.water=scene.add.graphics();return;}
   const g=scene.add.graphics().setDepth(-20);
   g.fillStyle(0x18251e).fillRect(0,0,1672,941);
   g.fillStyle(0x352c23).fillRect(98,290,1476,550);
@@ -61,7 +64,6 @@ export class InteriorLayers {
     const foodHit=scene.add.zone(x+35,365,104,42).setDepth(401).setInteractive({useHandCursor:true});
     foodHit.on('pointerup',()=>{const task=foodTask[id];if(canInteract()&&task)onTask(task);});
     if(id==='rabbit-hutch')for(const dx of [25,165]){const h=scene.add.graphics().setDepth(370);h.fillStyle(0x65452d).fillRect(x+dx,320,80,50).fillStyle(0xb88950).fillRect(x+dx-5,310,90,12).fillStyle(0x30291f).fillRect(x+dx+23,343,30,27);this.obstacles.push(rectangle(x+dx,320,80,50));}
-    if(id==='coop'){const n=scene.add.graphics().setDepth(345);n.fillStyle(0x67492e).fillRect(x+20,310,170,36);for(let k=0;k<3;k++)n.fillStyle(0xe3bd66).fillRect(x+29+k*54,320,39,16).fillStyle(0xf5e4bd).fillEllipse(x+46+k*54,326,12,16);}
    }
    if(id==='pig-shelter'){const mud=scene.add.graphics().setDepth(2);mud.fillStyle(0x64513c).fillRoundedRect(1150,575,235,105,20);mud.fillStyle(0x816346).fillRoundedRect(1160,580,215,90,18);}
    if(id==='horse-stable'){const bath=scene.add.graphics().setDepth(2);bath.fillStyle(0x777c72).fillRect(510,595,210,115);for(let y=601;y<704;y+=25)for(let x=516;x<716;x+=40)bath.fillStyle(0x9a9c85).fillRect(x,y,37,22);bath.fillStyle(0x343f3a).fillRect(600,672,30,13);for(let x=603;x<630;x+=7)bath.fillStyle(0x8c9284).fillRect(x,674,2,9);}
@@ -69,15 +71,16 @@ export class InteriorLayers {
   // Side walls are depth-sorted in front of the floor and behind foreground objects.
   for(const x of [98,1558]){const side=scene.add.graphics().setDepth(820);side.fillStyle(0x503927).fillRect(x,300,16,520).fillStyle(0xad7e44).fillRect(x,300,5,520);}
   this.water=scene.add.graphics().setDepth(399);
-  scene.add.text(835,233,id==='rabbit-hutch'?'CONEJERA':id==='goat-shelter'?'REFUGIO DE CABRAS':id==='coop'?'GALLINERO':id==='horse-stable'?'ESTABLO':id==='pig-shelter'?'CORRAL DE CERDOS':id==='home'?'CASA DE LA JEFA':id==='shed'?'INVERNADERO':'VAQUERÍA',{fontFamily:'Georgia,serif',fontSize:'21px',color:'#efdab0',letterSpacing:3}).setOrigin(.5).setDepth(310);
+  scene.add.text(835,233,id==='rabbit-hutch'?'CONEJERA':id==='goat-shelter'?'REFUGIO DE CABRAS':id==='horse-stable'?'ESTABLO':id==='pig-shelter'?'CORRAL DE CERDOS':id==='home'?'CASA DE LA JEFA':id==='shed'?'INVERNADERO':'VAQUERÍA',{fontFamily:'Georgia,serif',fontSize:'21px',color:'#efdab0',letterSpacing:3}).setOrigin(.5).setDepth(310);
  }
  private drawStraw(g:Phaser.GameObjects.Graphics,x:number,y:number,seed:number){g.clear().fillStyle(0xb99750,.55).fillEllipse(x+150,y+65,300,118);for(let k=0;k<180;k++){const xx=x+(k*47+seed*13)%295,yy=y+(k*29)%118;g.fillStyle([0xd1ae59,0xe4c574,0xb0873d][k%3]).fillRect(xx,yy,5+k%9,2);}}
  private drawFeed(g:Phaser.GameObjects.Graphics,full:boolean){g.clear().fillStyle(0x59402d).fillRect(-25,-10,98,28).fillStyle(0xab7d44).fillRect(-28,-14,104,6);g.fillStyle(0xc5a754).fillRect(-19,full?-8:0,86,full?20:10);for(let i=0;i<18;i++)g.fillStyle(i%2?0xead082:0x95a049).fillRect(-16+i*17%80,-5+i*13%14,9,2);}
  private rail(g:Phaser.GameObjects.Graphics,a:number,b:number,y:number){g.fillStyle(0x473020).fillRect(a,y-48,b-a,12).fillRect(a,y-24,b-a,10);g.fillStyle(0xb18249).fillRect(a,y-49,b-a,7).fillRect(a,y-25,b-a,5);}
  private post(g:Phaser.GameObjects.Graphics,x:number,y:number){g.fillStyle(0x634329).fillRect(x-7,y-64,15,70).fillStyle(0xc49755).fillRect(x-7,y-66,15,5).fillRect(x-5,y-60,4,62);}
  private furniture(id:InteriorId){for(const x of [250,1150]){const g=this.scene.add.graphics().setDepth(435);g.fillStyle(0x543c29).fillRect(x,330,200,100).fillStyle(0x9c7547).fillRect(x-8,317,216,22);this.obstacles.push(rectangle(x-8,317,216,113));if(id==='shed')for(let k=0;k<5;k++)g.fillStyle(0x855b35).fillRect(x+10+k*37,300,25,17).fillStyle(0x5f8540).fillRect(x+15+k*37,277,16,25);else g.fillStyle(0xb09469).fillRect(x+10,350,180,65).fillStyle(0xe8dbc0).fillRect(x+14,354,55,30);}}
- complete(task:TaskId){if(task.startsWith('feed-')){this.feeding=true;this.feed.forEach(g=>this.drawFeed(g,true));}if(task.startsWith('clean-'))this.straw.forEach((g,i)=>this.drawStraw(g,i?1130:220,335,i+7));if(task==='wash-horses'||task==='water-rabbits')this.wet=true;}
+ complete(task:TaskId){if(this.coop){this.coop.complete(task);return;}if(task.startsWith('feed-')){this.feeding=true;this.feed.forEach(g=>this.drawFeed(g,true));}if(task.startsWith('clean-'))this.straw.forEach((g,i)=>this.drawStraw(g,i?1130:220,335,i+7));if(task==='wash-horses'||task==='water-rabbits')this.wet=true;}
  update(time:number,delta:number,actors:readonly GateActor[]){
+  if(this.coop){this.coop.update(time,delta,actors);return;}
   this.gates.forEach((gate,i)=>{if(this.pinned.has(gate.id))gate.holdUntil=time+1500;advanceGate(gate,actors,time,delta);const art=this.gateArt[i];art.clear();this.rail(art,gate.a[0],gate.b[0]-gate.progress*98,480);art.fillStyle(0xd9bc73).fillRect(gate.b[0]-gate.progress*98-12,441,7,7);});
   const frame=Math.floor(time/140);if(frame===this.lastFrame)return;this.lastFrame=frame;this.water.clear();
   if(this.id!=='home'&&this.id!=='shed')for(const x of [438,1348]){this.water.fillStyle(this.wet?0x8bd3d0:0x70b2b5,.75);for(let k=0;k<3;k++)this.water.fillRect(x+(frame+k*13)%48,362+k*4,8+k*3,2);}

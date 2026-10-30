@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),Module=require('node:module'),path=re
 function load(entry){const m=new Module(path.resolve(entry));m.paths=module.paths;m._compile(buildSync({entryPoints:[entry],bundle:true,platform:'node',format:'cjs',write:false}).outputFiles[0].text,entry);return m.exports;}
 const {InteriorLayers}=load('src/game/interiors/InteriorLayers.ts'),{NavigationGrid}=load('src/game/navigation.ts'),{interiors}=load('src/data/interiors.ts'),{ruralBuildings}=load('src/game/world/ruralBuildings.ts'),{taskRoutes}=load('src/data/routes.ts');
 const object=()=>new Proxy({}, {get:()=>()=>object()});
-const scene={add:new Proxy({}, {get:()=>()=>object()}),tweens:{add:()=>{}}};
+const scene={textures:{get:()=>({getSourceImage:()=>({width:1254,height:1254}),has:()=>false,add:(name,index,x,y,w,h)=>{assert(x>=0&&y>=0&&w>0&&h>0&&x+w<=1254&&y+h<=1254,'Furniture frame stays inside its atlas: '+name);}})},add:new Proxy({}, {get:()=>()=>object()}),tweens:{add:()=>{}}};
 let routes=0;
 for(const [id,room] of Object.entries(interiors)){
  const layer=new InteriorLayers(scene,id,()=>true),nav=new NavigationGrid({width:1672,height:941,walkable:layer.walkable,obstacles:layer.obstacles,gates:layer.gates,canOpenGates:true},7);
