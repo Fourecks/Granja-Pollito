@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { InteriorLayers } from './interiors/InteriorLayers';
 import { createCowFrames } from './assets';
 import { animalTexture } from './world/LivestockLayer';
 import { WorldScene } from './WorldScene';
@@ -14,23 +15,24 @@ const speciesForTask:Partial<Record<TaskId,Species>>={
  'feed-chickens':'chicken','prepare-dust-bath':'chicken','feed-cows':'cow','collect-milk':'cow',
  'feed-goats':'goat','groom-goats':'goat','clean-goat-shelter':'goat',
  'feed-horses':'horse','brush-horses':'horse','wash-horses':'horse','clean-stable':'horse',
+ 'feed-rabbits':'rabbit','water-rabbits':'rabbit','clean-rabbit-hutch':'rabbit',
  'feed-pigs':'pig','mud-bath-pigs':'pig','clean-pig-pen':'pig',
 };
-const cleanupTask:Partial<Record<InteriorId,TaskId>>={coop:'clean-coop','goat-shelter':'clean-goat-shelter','horse-stable':'clean-stable','pig-shelter':'clean-pig-pen'};
+const cleanupTask:Partial<Record<InteriorId,TaskId>>={'rabbit-hutch':'clean-rabbit-hutch',coop:'clean-coop','goat-shelter':'clean-goat-shelter','horse-stable':'clean-stable','pig-shelter':'clean-pig-pen'};
 const animalHeight:Record<Species,number>={chicken:29,cow:102,horse:96,pig:59,goat:62,rabbit:43};
 const animalWidth:Record<Species,number>={chicken:38,cow:136,horse:128,pig:79,goat:83,rabbit:57};
 export class InteriorScene extends WorldScene {
- private id:InteriorId; private leaving=false; private animals:InteriorAnimal[]=[]; private careFx!:Phaser.GameObjects.Graphics;
+ private layers!:InteriorLayers; private id:InteriorId; private leaving=false; private animals:InteriorAnimal[]=[]; private careFx!:Phaser.GameObjects.Graphics;
  private manureMarks:Phaser.GameObjects.Graphics[]=[]; private stationLabels=new Map<TaskId,Phaser.GameObjects.Text>(); private careTask?:TaskId;
  constructor(runtime:FarmRuntime,id:InteriorId){super(`Interior-${id}`,runtime);this.id=id;this.interior=true;}
- preload(){if(!this.textures.exists('cows'))this.load.image('cows','/assets/cows-v2.webp');this.load.image(`room-${this.id}`,interiors[this.id].asset);}
+ preload(){if(!this.textures.exists('cows'))this.load.image('cows','/assets/cows-v2.webp');}
  create(){
   createCowFrames(this);const config=interiors[this.id];
-  this.add.image(0,0,`room-${this.id}`).setOrigin(0).setDisplaySize(1672,941).setDepth(0);
-  this.nav=new NavigationGrid({width:1672,height:941,walkable:config.walkable,obstacles:config.obstacles},7);
-  const c=this.cameras.main,fit=Math.max(this.scale.width/1672,this.scale.height/941),ratio=Number(this.game.registry.get('renderRatio'))||1;
-  c.setBounds(0,0,1672,941).setZoom(Math.max(fit,this.scale.width/ratio<760?.72*ratio:fit)).centerOn(835,510);
-  this.controls=new CameraControls(this,fit,2.4*ratio);
+  this.layers=new InteriorLayers(this,this.id,()=>!this.controls?.moved,task=>this.runtime.props.current.onTaskRequest(task));
+  this.nav=new NavigationGrid({width:1672,height:941,walkable:this.layers.walkable,obstacles:this.layers.obstacles,gates:this.layers.gates},7);
+  const c=this.cameras.main,fit=Math.min(this.scale.width/1672,this.scale.height/941),ratio=Number(this.game.registry.get('renderRatio'))||1;
+  c.setBounds(0,0,1672,941).setZoom(fit).centerOn(836,470);
+  this.controls=new CameraControls(this,fit,2.4*ratio,{width:1672,height:941},true);
   if(this.id!=='home')this.addWorkers(this.id==='shed'?[[780,550],[850,590],[910,560]]:[[710,550],[830,590],[930,560]]);
   if(this.id==='home')this.actor('la-jefa','worker',[910,580],[],this.nav,3);
   this.addInteriorAnimals(config.animals);
@@ -66,11 +68,12 @@ export class InteriorScene extends WorldScene {
  }
  protected onCareStart(task:TaskId){this.careTask=task;}
  protected onCareComplete(task:TaskId){
+  this.layers.complete(task);
   if(cleanupTask[this.id]===task&&this.manureMarks.length){this.tweens.add({targets:this.manureMarks,alpha:0,duration:500,onComplete:()=>{this.manureMarks.forEach(mark=>mark.destroy());this.manureMarks=[];}});}
   if(this.careTask===task)this.careTask=undefined;
  }
  update(time:number,delta:number){
-  super.update(time,delta);if(!this.scene.isVisible())return;
+  if(!this.scene.isVisible())return;this.layers.update(time,delta,this.actors);super.update(time,delta);
   const state=this.runtime.props.current.state,active=this.runtime.props.current.activeTasks;
   for(const [task,label] of this.stationLabels){const original=String(label.getData('label')),done=state.tasks[task].status==='done',running=active.includes(task);label.setText(done?`✓ ${original}`:running?`${original}…`:original);}
   this.animals.forEach(animal=>{
@@ -83,7 +86,7 @@ export class InteriorScene extends WorldScene {
   const targetSpecies=this.careTask?speciesForTask[this.careTask]:undefined;
   if(targetSpecies){
    const affected=this.animals.filter(animal=>animal.species===targetSpecies);
-   affected.forEach((animal,index)=>{const phase=time/180+animal.phase,water=this.careTask==='wash-horses'||this.careTask==='mud-bath-pigs';
+   affected.forEach((animal,index)=>{const phase=time/180+animal.phase,water=this.careTask==='wash-horses'||this.careTask==='mud-bath-pigs'||this.careTask==='water-rabbits';
     if(water){this.careFx.fillStyle(0x9ddded,.88).fillRect(Math.round(animal.sprite.x-18+Math.sin(phase)*12),Math.round(animal.sprite.y-54-Math.abs(Math.sin(phase))*7),3,4).fillRect(Math.round(animal.sprite.x+12+Math.cos(phase)*8),Math.round(animal.sprite.y-40-Math.abs(Math.cos(phase))*6),2,3);}
     else if(this.careTask==='prepare-dust-bath'){this.careFx.fillStyle(0xd8bd80,.75).fillRect(Math.round(animal.sprite.x-13+Math.sin(phase)*12),Math.round(animal.sprite.y-35-Math.abs(Math.cos(phase))*5),3,2);}
     else if(this.careTask?.startsWith('brush-')||this.careTask?.startsWith('groom-')){this.careFx.fillStyle(0xffe4a1,.9).fillRect(Math.round(animal.sprite.x-14+Math.sin(phase)*18),Math.round(animal.sprite.y-56-(index%2)*9),3,3).fillRect(Math.round(animal.sprite.x+13+Math.cos(phase)*16),Math.round(animal.sprite.y-44-(index%2)*5),2,2);}

@@ -29,6 +29,7 @@ const homes:Record<string,readonly [number,number]>={pio:[337,426],lola:[365,439
 export const characters:CharacterData[]=roster.map(c=>{const p=point(...homes[c.id]);return {...c,position:{x:p[0],y:p[1]},path:[[p[0],p[1]],[p[0]+14,p[1]+8],[p[0]-12,p[1]+8]]};});
 export interface InteractiveObject { id: string; type: 'sign' | 'building' | 'plot' | 'decoration'; title: string; message: string; taskIds?: TaskId[]; }
 export const objects: InteractiveObject[] = [
+  {id:'rabbit-hutch',type:'building',title:'Casa de los conejos',message:'Refugios, heno fresco y agua limpia para los conejos.',taskIds:['feed-rabbits','water-rabbits','clean-rabbit-hutch']},
   { id: 'home', type: 'building', title: 'Casa de La Jefa', message: 'Parcela reservada para la Casa de La Jefa.' },
   { id: 'coop', type: 'building', title: 'Gallinero', message: 'El gallinero tiene nidos, semillas y un baño de polvo para los pollitos.', taskIds: ['feed-chickens', 'collect-eggs', 'clean-coop', 'prepare-dust-bath'] },
   { id: 'barn', type: 'building', title: 'Establo de las vacas', message: 'El establo mantiene a las vacas con heno, agua y ordeño.', taskIds: ['feed-cows', 'collect-milk'] },

@@ -15,6 +15,9 @@ export const workers: Worker[] = [
 ];
 export interface TaskRoute { worker: string; room: InteriorId; point: Point; interiorPoint: Point; action: string; duration: number; }
 export const taskRoutes: Record<TaskId,TaskRoute> = {
+ 'feed-rabbits':{worker:'minnie',room:'rabbit-hutch',point:entry('rabbit-hutch'),interiorPoint:[470,545],action:'Sirviendo heno y verduras',duration:2600},
+ 'water-rabbits':{worker:'kiara',room:'rabbit-hutch',point:entry('rabbit-hutch'),interiorPoint:[1190,545],action:'Renovando agua limpia',duration:2600},
+ 'clean-rabbit-hutch':{worker:'pollito',room:'rabbit-hutch',point:entry('rabbit-hutch'),interiorPoint:[850,660],action:'Limpiando la conejera',duration:3000},
  'feed-chickens':{worker:'minnie',room:'coop',point:point(325,430),interiorPoint:[1190,515],action:'Sirviendo semillas',duration:2500},
  'collect-eggs':{worker:'kiara',room:'coop',point:point(399,427),interiorPoint:[835,360],action:'Recogiendo huevos',duration:2400},
  'clean-coop':{worker:'pollito',room:'coop',point:point(360,449),interiorPoint:[460,535],action:'Agua fresca y paja limpia',duration:2700},

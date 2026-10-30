@@ -10,7 +10,7 @@ export class RuralBuildingsLayer {
   for(const p of ruralBuildings){
    const [x,y]=p.anchor,image=scene.add.image(x,y,p.texture).setOrigin(.5,1).setDepth(p.door[1]);
    image.setScale(p.displayWidth/image.width).setData('buildingId',p.id);
-   const hit=scene.add.zone(...p.door,32,26).setDepth(p.door[1]+1).setData('buildingId',p.id).setData('interiorReady',true).setInteractive({useHandCursor:true});
+   const hit=image.setInteractive({useHandCursor:true}).setData('interiorReady',Boolean(p.interiorId));
    hit.on('pointerup',()=>{if(canInteract()&&p.interiorId)onSelect(p.interiorId);});
   }
   // Native-resolution pixel timber. Rails and collision share the same endpoints.

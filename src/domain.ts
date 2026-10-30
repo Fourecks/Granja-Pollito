@@ -1,4 +1,4 @@
-export type TaskId = 'feed-chickens' | 'collect-eggs' | 'clean-coop' | 'prepare-dust-bath' | 'water-crops' | 'feed-cows' | 'collect-milk' | 'feed-goats' | 'groom-goats' | 'clean-goat-shelter' | 'feed-horses' | 'brush-horses' | 'wash-horses' | 'clean-stable' | 'feed-pigs' | 'mud-bath-pigs' | 'clean-pig-pen';
+export type TaskId = 'feed-chickens' | 'collect-eggs' | 'clean-coop' | 'prepare-dust-bath' | 'water-crops' | 'feed-cows' | 'collect-milk' | 'feed-goats' | 'groom-goats' | 'clean-goat-shelter' | 'feed-horses' | 'brush-horses' | 'wash-horses' | 'clean-stable' | 'feed-pigs' | 'mud-bath-pigs' | 'clean-pig-pen' | 'feed-rabbits' | 'water-rabbits' | 'clean-rabbit-hutch';
 export type TaskStatus = 'ready' | 'done';
 export interface FarmTask { id: TaskId; status: TaskStatus; lastRunAt: number | null; assignedTo: string | null; }
 export interface FarmState { lastSeen: number; eggs: number; milk: number; cropsWatered: boolean; tasks: Record<TaskId, FarmTask>; introSeen: boolean; }
@@ -7,6 +7,9 @@ export interface OfflineReport { lines: string[]; elapsedMs: number; }
 export const DEFAULT_STATE: FarmState = {
   lastSeen: Date.now(), eggs: 0, milk: 0, cropsWatered: false, introSeen: false,
   tasks: {
+    'clean-rabbit-hutch': { id: 'clean-rabbit-hutch', status: 'ready', lastRunAt: null, assignedTo: null },
+    'water-rabbits': { id: 'water-rabbits', status: 'ready', lastRunAt: null, assignedTo: null },
+    'feed-rabbits': { id: 'feed-rabbits', status: 'ready', lastRunAt: null, assignedTo: null },
     'feed-chickens': { id: 'feed-chickens', status: 'ready', lastRunAt: null, assignedTo: 'pio' },
     'collect-eggs': { id: 'collect-eggs', status: 'ready', lastRunAt: null, assignedTo: null },
     'clean-coop': { id: 'clean-coop', status: 'ready', lastRunAt: null, assignedTo: null },
@@ -28,6 +31,9 @@ export const DEFAULT_STATE: FarmState = {
 };
 
 export const taskCopy: Record<TaskId, { title: string; place: string; actor: string; quantity?: number }> = {
+  'clean-rabbit-hutch': {title: 'Limpiar la conejera', place: 'Conejera', actor: 'Minnie'},
+  'water-rabbits': {title: 'Renovar agua de conejos', place: 'Conejera', actor: 'Minnie'},
+  'feed-rabbits': {title: 'Servir heno a los conejos', place: 'Conejera', actor: 'Minnie'},
   'feed-chickens': { title: 'Alimentar pollitos', place: 'Gallinero', actor: 'Pío' },
   'collect-eggs': { title: 'Recoger huevos', place: 'Gallinero', actor: 'Pío', quantity: 4 },
   'clean-coop': { title: 'Limpiar gallinero', place: 'Gallinero', actor: 'Pío' },
